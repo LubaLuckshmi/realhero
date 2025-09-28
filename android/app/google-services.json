@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "441393091992",
+    "project_id": "realhero-6df71",
+    "storage_bucket": "realhero-6df71.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:441393091992:android:af7a6f4adfff199c77c7ed",
+        "android_client_info": {
+          "package_name": "com.example.realhero"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAB4HlOdxhDIFR7ml9R7mjBxLplTTVTQJU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

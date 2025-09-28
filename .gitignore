@@ -1,0 +1,35 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+.pub-cache/
+.idea/
+.vscode/*
+!/.vscode/settings.json
+!/.vscode/launch.json
+!/.vscode/tasks.json
+
+# iOS/macOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+macos/Pods/
+macos/.symlinks/
+macos/Flutter/ephemeral/
+
+# Android
+android/.gradle/
+android/app/build/
+**/local.properties
+
+# Xcode
+**/*.xcuserstate
+**/*.xcworkspace
+**/xcshareddata/WorkspaceSettings.xcsettings
+
+# Misc
+*.log
+*.tmp
+.DS_Store
+
