@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../widgets/app_button.dart';
-import '../onboarding/onboarding_screen.dart';
+import 'package:provider/provider.dart';
+import '../../viewmodels/onboarding_view_model.dart';
+import '../onboarding/onboarding_q1_screen.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -47,11 +49,14 @@ class StartScreen extends StatelessWidget {
                 ),
                 child: AppButton(
                   text: 'Я не знаю что хочу',
-                  onTap: () {
+                 onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const OnboardingScreen(),
+                        builder: (_) => ChangeNotifierProvider(
+                          create: (_) => OnboardingViewModel(),
+                          child: const OnboardingQ1Screen(),
+                        ),
                       ),
                     );
                   },
