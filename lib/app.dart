@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/auth_test_screen.dart';
-import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/start/start_screen.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -8,9 +7,9 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "RealHero",
+      title: 'RealHero',
       theme: ThemeData(useMaterial3: true, primarySwatch: Colors.teal),
-      home: const OnboardingScreen(),
+      home: const StartScreen(),
     );
   }
 }
