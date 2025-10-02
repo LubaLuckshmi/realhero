@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 /// Храним ответы пользователя на шагах онбординга
 class OnboardingViewModel extends ChangeNotifier {
   String? _fearChoice; // Q1: что бы сделала, если бы не боялась
-  final Set<String> _inspirations = {}; // Q2: что вдохновляет (позже)
-  String? _mood; // Q3: как себя чувствуешь (позже)
+  final Set<String> _inspirations = {}; // Q2: что вдохновляет
+  String? _mood; // Q3: как себя чувствуешь (СТРОКА, не int!)
 
   // --- Getters
   String? get fearChoice => _fearChoice;
@@ -27,7 +27,7 @@ class OnboardingViewModel extends ChangeNotifier {
   }
 
   void setMood(String value) {
-    _mood = value;
+    _mood = value; // строка: '😔 Плохо' | '🙂 Нормально' | '😃 Отлично'
     notifyListeners();
   }
 
@@ -38,6 +38,5 @@ class OnboardingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Удобные флаги валидации
-  bool get canGoNextFromQ1 => _fearChoice != null && _fearChoice!.isNotEmpty;
+  bool get canGoNextFromQ1 => (_fearChoice != null && _fearChoice!.isNotEmpty);
 }
