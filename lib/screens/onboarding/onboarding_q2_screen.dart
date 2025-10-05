@@ -2,48 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/background_stars.dart';
 import '../../viewmodels/onboarding_view_model.dart';
-import 'onboarding_q3_screen.dart';
+import 'onboarding_q2_energy_screen.dart';
 
 class OnboardingQ2Screen extends StatelessWidget {
   const OnboardingQ2Screen({super.key});
 
-  /// Эмодзи + подпись (порядок как в макете)
-  static const _items = <({String emoji, String label})>[
-    (emoji: '🌿', label: 'Природа'),
-    (emoji: '🎨', label: 'Искусство'),
-    (emoji: '👥', label: 'Люди'),
-    (emoji: '🎵', label: 'Музыка'),
-    (emoji: '💰', label: 'Деньги'),
-    (emoji: '😊', label: 'Эмоции'),
-    (emoji: '🤝', label: 'Помощь другим'),
-    (emoji: '💖', label: 'Красота'),
-  ];
-
-  static const _maxSelect = 3;
-
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<OnboardingViewModel>();
-    final chosen = vm.inspirations;
 
-    void toggle(({String emoji, String label}) it) {
-      final value = '${it.emoji} ${it.label}';
-      if (chosen.contains(value)) {
-        vm.toggleInspiration(value);
-      } else if (chosen.length < _maxSelect) {
-        vm.toggleInspiration(value);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Можно выбрать до 3 вариантов'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-
-    final canNext = chosen.isNotEmpty;
+    final items = const <(String, String)>[
+      ('🌿', 'Природа'),
+      ('🎵', 'Музыка'),
+      ('🎨', 'Искусство'),
+      ('🫶', 'Помощь другим'),
+      ('💎', 'Красота'),
+      ('💬', 'Эмоции'),
+      ('🧑‍🤝‍🧑', 'Люди'),
+      ('💰', 'Деньги'),
+    ];
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -51,90 +28,107 @@ class OnboardingQ2Screen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // Back
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Spacer(),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: Text('2/4', style: TextStyle(color: Colors.white70)),
+                  ),
+                ],
               ),
 
-              // Заголовок
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 6),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 8, 24, 4),
                 child: Text(
-                  'Что тебя вдохновляет больше\nвсего?',
+                  'Что тебя вдохновляет\nбольше всего?',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                  style: TextStyle(
+                    fontSize: 24,
                     height: 1.25,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ),
-              // Счётчик по центру под заголовком — как на скрине
-              Text(
-                'Выбрано ${chosen.length}/$_maxSelect',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white70,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 18),
 
-              // Плитка
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: _items.map((it) {
-                    final value = '${it.emoji} ${it.label}';
-                    final selected = chosen.contains(value);
-                    return _ChoicePill(
-                      text: value,
-                      selected: selected,
-                      onTap: () => toggle(it),
-                    );
-                  }).toList(),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Выбери 3 пункта',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
 
-              const Spacer(),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GridView.builder(
+                    itemCount: items.length,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 1.9,
+                        ),
+                    itemBuilder: (_, i) {
+                      final (emoji, label) = items[i];
+                      final selected = vm.inspirations.contains(label);
+                      return _ChoiceTile(
+                        emoji: emoji,
+                        label: label,
+                        selected: selected,
+                        onTap: () {
+                          if (selected) {
+                            vm.toggleInspiration(label);
+                          } else if (vm.inspirations.length < 3) {
+                            vm.toggleInspiration(label);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
 
-              // Кнопка "Дальше"
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: canNext
+                  child: FilledButton(
+                    onPressed: vm.inspirations.length == 3
                         ? () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const OnboardingQ3Screen(),
+                                builder: (_) =>
+                                    const OnboardingQ2EnergyScreen(),
                               ),
                             );
                           }
                         : null,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: canNext
-                          ? const Color(0xFF2CC796)
-                          : Colors.white24,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2CC796),
                       disabledBackgroundColor: Colors.white24,
-                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        borderRadius: BorderRadius.circular(24),
                       ),
                     ),
-                    child: const Text('Дальше'),
+                    child: Text(
+                      'Дальше (${vm.inspirations.length}/3)',
+                      style: const TextStyle(fontSize: 16),
+                    ),
                   ),
                 ),
               ),
@@ -146,59 +140,54 @@ class OnboardingQ2Screen extends StatelessWidget {
   }
 }
 
-/// Пилюля "как на скрине":
-/// - НЕвыбранная: прозрачная, белая обводка
-/// - Выбранная: синяя заливка
-class _ChoicePill extends StatelessWidget {
-  const _ChoicePill({
-    required this.text,
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.emoji,
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final String text;
+  final String emoji;
+  final String label;
   final bool selected;
   final VoidCallback onTap;
 
-  static const _blue = Color(0xFF3B82F6); // приятный синий для выбранного
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        constraints: const BoxConstraints(minHeight: 44, minWidth: 110),
+      child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: selected ? _blue : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withOpacity(selected ? 0.20 : 0.08),
           border: Border.all(
-            color: selected ? Colors.transparent : Colors.white70,
-            width: 1.5,
+            color: selected ? const Color(0xFF2CC796) : Colors.white24,
+            width: selected ? 2 : 1,
           ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: _blue.withOpacity(0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : const [],
         ),
-        alignment: Alignment.center,
-        child: Text(
-          text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 14,
-            height: 1.2,
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(
+              selected ? Icons.check_circle : Icons.circle_outlined,
+              color: selected ? const Color(0xFF2CC796) : Colors.white38,
+              size: 20,
+            ),
+          ],
         ),
       ),
     );
