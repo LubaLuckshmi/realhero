@@ -1,7 +1,7 @@
 // lib/screens/start/start_screen.dart
 import 'package:flutter/material.dart';
 import '../../widgets/app_button.dart';
-import '../onboarding/onboarding_q2_screen.dart';
+import '../onboarding/onboarding_q1_screen.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -46,7 +46,7 @@ class StartScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const OnboardingQ2Screen(),
+                          builder: (_) => const OnboardingQ1Screen(),
                         ),
                       );
                     },
