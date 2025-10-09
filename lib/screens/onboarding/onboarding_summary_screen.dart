@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../widgets/background_stars.dart';
 import '../../viewmodels/onboarding_view_model.dart';
-import 'suggest_goal_screen.dart';
+import '../goals/goal_suggest_screen.dart'; // <— ВАЖНО: из goals!
 
 class OnboardingSummaryScreen extends StatelessWidget {
   const OnboardingSummaryScreen({super.key});
@@ -20,7 +21,6 @@ class OnboardingSummaryScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // top bar
                 Row(
                   children: [
                     IconButton(
@@ -32,7 +32,6 @@ class OnboardingSummaryScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-
                 Text(
                   'Итоги',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -73,7 +72,7 @@ class OnboardingSummaryScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                 ],
 
-                // Energy (если уже будет экран — просто начнёт показываться)
+                // Энергия (если появится экран — начнёт показываться автоматически)
                 if (vm.energy.isNotEmpty) ...[
                   Text(
                     'Что даёт энергию:',
@@ -102,6 +101,7 @@ class OnboardingSummaryScreen extends StatelessWidget {
                   vm.mood ?? '🙂 Нормально',
                   style: const TextStyle(color: Colors.white, fontSize: 18),
                 ),
+
                 const Spacer(),
 
                 // CTA
@@ -109,25 +109,13 @@ class OnboardingSummaryScreen extends StatelessWidget {
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () async {
-                      final result = await Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => SuggestGoalScreen(
-                            fearChoice: vm.fearChoice,
-                            inspirations: vm.inspirations,
-                            energy: vm.energy,
-                            mood: vm.mood,
-                          ),
+                          builder: (_) => const GoalSuggestScreen(),
                         ),
                       );
-
-                      if (context.mounted && result != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Выбрана цель: ${result['title']}'),
-                          ),
-                        );
-                      }
+                      // после возврата ничего не делаем — GoalSuggest сам уводит на Home
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: const Color(0xFF2CC796),

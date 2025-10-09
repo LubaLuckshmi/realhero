@@ -1,169 +1,210 @@
-/// home_screen.dart — UI главного экрана с оффлайн/облако, входом и датой рождения
+// lib/screens/home/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../viewmodels/home_viewmodel.dart';
-import '../auth/email_auth_dialog.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../../viewmodels/home_viewmodel.dart';
+import '../../widgets/background_stars.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => HomeViewModel()..init(),
-      child: Consumer<HomeViewModel>(
-        builder: (context, vm, _) {
-          final signedIn = vm.user != null;
+  State<HomeScreen> createState() => _HomeScreenState();
+}
 
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('RealHero — Мои цели'),
-              actions: [
-                if (!signedIn)
-                  TextButton(
-                    onPressed: () async {
-                      final ok = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => const EmailAuthDialog(),
-                      );
-                      if (ok == true) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Вход выполнен. Синхронизирую цели...')),
-                        );
-                      }
-                    },
-                    child: const Text('Войти', style: TextStyle(color: Colors.white)),
-                  )
-                else
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.account_circle),
-                    onSelected: (v) async {
-                      if (v == 'birth' && vm.user != null) {
-                        final picked = await showDatePicker(
-                          context: context,
-                          firstDate: DateTime(1920),
-                          lastDate: DateTime.now(),
-                          initialDate: DateTime(2000, 1, 1),
-                        );
-                        if (picked != null) {
-                          await vm.saveBirthDateAndSuggest(picked);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Профиль сохранён. Добавлены рекомендации.')),
-                          );
-                        }
-                      } else if (v == 'signout') {
-                        await FirebaseAuth.instance.signOut();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Вы вышли из аккаунта. Данные будут храниться локально.')),
-                        );
-                      }
-                    },
-                    itemBuilder: (ctx) => [
-                      PopupMenuItem(
-                        value: 'birth',
-                        child: Text(vm.profile?.birthDate == null ? 'Указать дату рождения' : 'Изменить дату рождения'),
-                      ),
-                      const PopupMenuItem(value: 'signout', child: Text('Выйти')),
-                    ],
+class _HomeScreenState extends State<HomeScreen> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<HomeViewModel>();
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: BackgroundStars(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Заголовок
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Text(
+                  'Мои цели',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
+              ),
+
+              // Общий прогресс
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: vm.totalProgress,
+                    minHeight: 8,
+                    backgroundColor: Colors.white10,
+                    valueColor: const AlwaysStoppedAnimation(Color(0xFF2CC796)),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Список целей со скроллбаром
+              Expanded(
+                child: Scrollbar(
+                  controller: _scroll,
+                  thumbVisibility: true, // показать «ползунок»
+                  trackVisibility: true, // и трек (дорожку)
+                  interactive: true,
+                  child: ListView.separated(
+                    controller: _scroll,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: vm.items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final g = vm.items[index];
+                      return _GoalTile(
+                        title: g.title,
+                        firstStep: g.firstStep,
+                        progress: g.progress,
+                        onProgress: (v) => vm.setProgress(g, v),
+                        onRemove: () => vm.remove(g),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GoalTile extends StatelessWidget {
+  const _GoalTile({
+    required this.title,
+    this.firstStep,
+    required this.progress,
+    required this.onProgress,
+    required this.onRemove,
+  });
+
+  final String title;
+  final String? firstStep;
+  final double progress;
+  final ValueChanged<double> onProgress;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Заголовок + удалить
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_forever, color: Colors.white54),
+                onPressed: onRemove,
+                tooltip: 'Удалить цель',
+              ),
+            ],
+          ),
+
+          if (firstStep != null && firstStep!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.flag, color: Colors.white70, size: 18),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    firstStep!,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
               ],
             ),
-            floatingActionButton: FloatingActionButton.extended(
-              icon: const Icon(Icons.add),
-              label: const Text('Добавить'),
-              onPressed: () async {
-                final ctl = TextEditingController();
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Новая цель'),
-                    content: TextField(controller: ctl, decoration: const InputDecoration(labelText: 'Название')),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Добавить')),
-                    ],
-                  ),
-                );
-                if (ok == true && ctl.text.trim().isNotEmpty) {
-                  await vm.add(ctl.text.trim());
-                }
-              },
+          ],
+
+          const SizedBox(height: 12),
+
+          // Прогресс
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: Colors.white10,
+              valueColor: const AlwaysStoppedAnimation(Color(0xFF2CC796)),
             ),
-            body: vm.loading
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text('Сохранение: ${signedIn ? 'в облаке' : 'локально'}'),
-                            const SizedBox(height: 8),
-                            Text('Прогресс: ${(vm.progress * 100).toStringAsFixed(0)}%'),
-                            const SizedBox(height: 8),
-                            LinearProgressIndicator(value: vm.progress),
-                            if (signedIn && vm.profile?.birthDate == null) ...[
-                              const SizedBox(height: 12),
-                              Card(
-                                child: ListTile(
-                                  leading: const Icon(Icons.cake),
-                                  title: const Text('Добавь дату рождения, чтобы получить персональные рекомендации'),
-                                  trailing: const Icon(Icons.chevron_right),
-                                  onTap: () async {
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      firstDate: DateTime(1920),
-                                      lastDate: DateTime.now(),
-                                      initialDate: DateTime(2000, 1, 1),
-                                    );
-                                    if (picked != null) {
-                                      await vm.saveBirthDateAndSuggest(picked);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Рекомендации добавлены ✨')),
-                                      );
-                                    }
-                                  },
-                                ),
-                              ),
-                            ]
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: vm.items.isEmpty
-                            ? const Center(child: Text('Пока нет целей. Добавь первую ✨'))
-                            : ListView.builder(
-                                itemCount: vm.items.length,
-                                itemBuilder: (ctx, i) => Dismissible(
-                                  key: ValueKey(vm.items[i].id),
-                                  direction: DismissDirection.endToStart,
-                                  onDismissed: (_) => vm.remove(vm.items[i]),
-                                  background: Container(
-                                    color: Colors.red, alignment: Alignment.centerRight, padding: const EdgeInsets.only(right: 16),
-                                    child: const Icon(Icons.delete, color: Colors.white),
-                                  ),
-                                  child: ListTile(
-                                    title: Text(
-                                      vm.items[i].title,
-                                      style: TextStyle(
-                                        decoration: vm.items[i].isCompleted ? TextDecoration.lineThrough : null,
-                                      ),
-                                    ),
-                                    trailing: Checkbox(
-                                      value: vm.items[i].isCompleted,
-                                      onChanged: (_) => vm.toggle(vm.items[i]),
-                                    ),
-                                    onTap: () => vm.toggle(vm.items[i]),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ],
+          ),
+
+          const SizedBox(height: 10),
+
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF2CC796),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
                   ),
-          );
-        },
+                  onPressed: () {
+                    final next = (progress + 0.25).clamp(0.0, 1.0);
+                    onProgress(next);
+                  },
+                  child: const Text('+ шаг выполнен'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.12),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
+                onPressed: () => onProgress(0.0),
+                child: const Text('Сброс'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

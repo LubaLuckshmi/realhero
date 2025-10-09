@@ -1,34 +1,52 @@
-/// goal_service.dart — Firestore: цели пользователя в users/{uid}/goals
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/goal.dart';
 
+/// Работа с целями в Firestore: users/{uid}/goals
 class GoalService {
   CollectionReference<Map<String, dynamic>> _userGoals(String uid) =>
-      FirebaseFirestore.instance.collection('users').doc(uid).collection('goals');
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('goals');
 
   Future<List<Goal>> fetchGoals(String uid) async {
     final snap = await _userGoals(uid).orderBy('title').get();
-    return snap.docs.map((d) => Goal.fromMap(d.data(), d.id)).toList();
+    return snap.docs
+        .map(
+          (d) => Goal.fromJson({
+            ...d.data(),
+            'id': d.id, // важно: подставляем id документа
+          }),
+        )
+        .toList();
   }
 
-  Future<void> addGoal(String uid, String title) async {
-    await _userGoals(uid).add({'title': title, 'isCompleted': false});
+  /// Добавить цель целиком (предпочтительно).
+  Future<void> addGoal(String uid, Goal goal) async {
+    await _userGoals(uid).doc(goal.id).set(goal.toJson());
   }
 
-  Future<void> toggle(String uid, String id, bool newValue) async {
-    await _userGoals(uid).doc(id).update({'isCompleted': newValue});
+  /// Упростённый метод — если нужно быстро создать черновик.
+  Future<String> addGoalTitle(
+    String uid,
+    String title, {
+    String category = 'Без категории',
+  }) async {
+    final ref = await _userGoals(uid).add({
+      'category': category,
+      'title': title,
+      'firstStep': null,
+      'progress': 0.0,
+      'isCompleted': false,
+    });
+    return ref.id;
   }
 
-  Future<void> remove(String uid, String id) async {
-    await _userGoals(uid).doc(id).delete();
+  Future<void> updateGoal(String uid, Goal goal) async {
+    await _userGoals(uid).doc(goal.id).update(goal.toJson());
   }
 
-  Future<void> addMany(String uid, List<String> titles) async {
-    final batch = FirebaseFirestore.instance.batch();
-    final col = _userGoals(uid);
-    for (final t in titles) {
-      batch.set(col.doc(), {'title': t, 'isCompleted': false});
-    }
-    await batch.commit();
+  Future<void> removeGoal(String uid, String goalId) async {
+    await _userGoals(uid).doc(goalId).delete();
   }
 }
