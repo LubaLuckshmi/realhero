@@ -9,26 +9,27 @@ class StartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // фон — картинка со львом
       body: Stack(
         children: [
+          // Фон
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/start_bg.png', // положи файл в assets/images/
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/images/start_bg.png', fit: BoxFit.cover),
           ),
+
+          // Контент
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
-                  // заголовок в 2 строки, как в макете
+                  // Заголовок — жёстко 2 строки
                   const Text(
-                    'Каждый день — шанс стать\nсобой!',
+                    'Каждый день — шанс\nстать собой!',
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.visible,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,

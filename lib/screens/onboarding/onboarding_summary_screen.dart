@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../widgets/background_stars.dart';
 import '../../viewmodels/onboarding_view_model.dart';
+import '../goals/goal_suggest_screen.dart'; // <— ВАЖНО: из goals!
 
 class OnboardingSummaryScreen extends StatelessWidget {
   const OnboardingSummaryScreen({super.key});
@@ -14,153 +16,134 @@ class OnboardingSummaryScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: BackgroundStars(
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Back + Заголовок
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Итоги',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    // Цель сейчас
-                    Text(
-                      'Твоя цель сейчас:',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      vm.fearChoice?.toString() ?? '— не выбрано —',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Вдохновляет (чипы — светлые для контраста)
-                    Text(
-                      'Что вдохновляет:',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: vm.inspirations.isEmpty
-                          ? [_InfoChip(text: '— не выбрано —', muted: true)]
-                          : vm.inspirations
-                                .map((s) => _InfoChip(text: s))
-                                .toList(),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Настроение
-                    Text(
-                      'Как ты себя чувствуешь:',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleMedium?.copyWith(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      vm.mood ?? '🙂 Нормально',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    const Spacer(),
+                    const SizedBox(width: 48),
                   ],
                 ),
-              ),
-
-              // Готово
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 22),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () =>
-                        Navigator.popUntil(context, (r) => r.isFirst),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      backgroundColor: const Color(0xFF2CC796),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    child: const Text('Готово'),
+                const SizedBox(height: 8),
+                Text(
+                  'Итоги',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+
+                // Q1
+                Text(
+                  'Твоя цель сейчас:',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  vm.fearChoice ?? '— не выбрано —',
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                const SizedBox(height: 24),
+
+                // Q2 — вдохновляет
+                if (vm.inspirations.isNotEmpty) ...[
+                  Text(
+                    'Что вдохновляет:',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: vm.inspirations.map((e) => _chip(e)).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Энергия (если появится экран — начнёт показываться автоматически)
+                if (vm.energy.isNotEmpty) ...[
+                  Text(
+                    'Что даёт энергию:',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: vm.energy.map((e) => _chip(e)).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // Q3
+                Text(
+                  'Как ты себя чувствуешь:',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  vm.mood ?? '🙂 Нормально',
+                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                ),
+
+                const Spacer(),
+
+                // CTA
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const GoalSuggestScreen(),
+                        ),
+                      );
+                      // после возврата ничего не делаем — GoalSuggest сам уводит на Home
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF2CC796),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    child: const Text('Предложить цели'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-}
 
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.text, this.muted = false});
-
-  final String text;
-  final bool muted;
-
-  @override
-  Widget build(BuildContext context) {
-    final bg = muted
-        ? Colors.white.withOpacity(0.25)
-        : Colors.white.withOpacity(0.88);
-    final fg = muted ? Colors.white : const Color(0xFF0E0E0E);
-
+  Widget _chip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.10),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.2),
+        border: Border.all(color: Colors.white38),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        text,
-        style: TextStyle(color: fg, fontSize: 14, fontWeight: FontWeight.w700),
-      ),
+      child: Text(text, style: const TextStyle(color: Colors.white)),
     );
   }
 }
