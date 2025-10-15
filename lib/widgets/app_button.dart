@@ -1,3 +1,4 @@
+// lib/widgets/app_button.dart
 import 'package:flutter/material.dart';
 
 enum AppButtonKind { green, blue, ghost }
@@ -36,10 +37,10 @@ class AppButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(26),
         gradient: enabled ? bg : null,
         color: enabled
-            ? (bg == null ? Colors.white.withOpacity(0.18) : null)
-            : Colors.white.withOpacity(0.12), // «стекло», когда disabled
+            ? (bg == null ? Colors.white.withValues(alpha: 0.18) : null)
+            : Colors.white.withValues(alpha: 0.12),
         border: kind == AppButtonKind.ghost
-            ? Border.all(color: Colors.white.withOpacity(0.45))
+            ? Border.all(color: Colors.white.withValues(alpha: 0.45))
             : null,
         boxShadow: bg != null && enabled
             ? [
@@ -48,7 +49,7 @@ class AppButton extends StatelessWidget {
                       (kind == AppButtonKind.green
                               ? const Color(0xFF76ED92)
                               : const Color(0xFF4666D5))
-                          .withOpacity(0.35),
+                          .withValues(alpha: 0.35),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -60,7 +61,7 @@ class AppButton extends StatelessWidget {
         text,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 16, // компактнее, лучше влезает
+          fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
       ),

@@ -33,3 +33,4 @@ android/app/build/
 *.tmp
 .DS_Store
 
+.vscode/
