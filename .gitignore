@@ -34,3 +34,6 @@ android/app/build/
 .DS_Store
 
 .vscode/
+.vscode/
+*.env
+openai.json
