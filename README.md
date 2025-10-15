@@ -1,6 +1,14 @@
 # realhero
 
-A new Flutter project.
+Flutter-приложение (MVVM) с локальными целями, онбордингом и лёгкой авторизацией (Firebase). В спринте 4 добавили ИИ-подсказки целей.
+
+## Запуск (без секретов в репозитории)
+
+**1) Установите переменную окружения с ключом:**
+```bash
+# macOS (zsh):
+echo 'export OPENAI_API_KEY="PASTE_YOUR_KEY_HERE"' >> ~/.zshrc
+source ~/.zshrc
 
 ## Getting Started
 

@@ -1,9 +1,11 @@
+// lib/screens/goals/create_goal_screen.dart
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/goal.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/background_stars.dart';
+import '../../utils/constants.dart';
 
 class CreateGoalScreen extends StatefulWidget {
   const CreateGoalScreen({
@@ -22,18 +24,7 @@ class CreateGoalScreen extends StatefulWidget {
 }
 
 class _CreateGoalScreenState extends State<CreateGoalScreen> {
-  static const _categories = <String>[
-    'Здоровье',
-    'Музыка',
-    'Карьера',
-    'Отношения',
-    'Учёба',
-    'Творчество',
-    'Помощь другим',
-    'Красота',
-    'Деньги',
-    'Спорт',
-  ];
+  final _uuid = const Uuid();
 
   final _titleC = TextEditingController();
   final _stepC = TextEditingController();
@@ -42,7 +33,9 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedCategory = widget.prefillCategory ?? _categories.first;
+    _selectedCategory =
+        widget.prefillCategory ??
+        (kGoalCategories.isNotEmpty ? kGoalCategories.first : null);
     _titleC.text = widget.prefillTitle ?? '';
     _stepC.text = widget.prefillFirstStep ?? '';
   }
@@ -59,12 +52,12 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
     if (title.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Введите название цели')));
+      ).showSnackBar(const SnackBar(content: Text(msgEnterGoalTitle)));
       return;
     }
     final goal = Goal(
-      id: const Uuid().v4(),
-      category: _selectedCategory ?? _categories.first,
+      id: _uuid.v4(),
+      category: _selectedCategory ?? '',
       title: title,
       firstStep: _stepC.text.trim().isEmpty ? null : _stepC.text.trim(),
       progress: 0.0,
@@ -84,7 +77,6 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // top bar
                 Row(
                   children: [
                     IconButton(
@@ -105,7 +97,6 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Категория
                 const Text(
                   'Категория',
                   style: TextStyle(color: Colors.white70),
@@ -114,7 +105,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: _categories.map((c) {
+                  children: kGoalCategories.map((c) {
                     final isSel = c == _selectedCategory;
                     return ChoiceChip(
                       label: Text(c),
@@ -135,7 +126,6 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Название цели
                 const Text(
                   'Название цели',
                   style: TextStyle(color: Colors.white70),
@@ -145,10 +135,8 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
                   controller: _titleC,
                   hint: 'Например: Вернуть музыку в день',
                 ),
-
                 const SizedBox(height: 14),
 
-                // Первый шаг
                 const Text(
                   'Первый шаг',
                   style: TextStyle(color: Colors.white70),
@@ -160,7 +148,6 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
                 ),
 
                 const Spacer(),
-
                 AppButton(
                   text: 'Сохранить',
                   kind: AppButtonKind.green,
@@ -197,7 +184,7 @@ class _GlassField extends StatelessWidget {
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white60),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.12),
+        fillColor: Colors.white.withValues(alpha: 0.12),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 14,

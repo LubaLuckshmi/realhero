@@ -33,3 +33,7 @@ android/app/build/
 *.tmp
 .DS_Store
 
+.vscode/
+.vscode/
+*.env
+openai.json

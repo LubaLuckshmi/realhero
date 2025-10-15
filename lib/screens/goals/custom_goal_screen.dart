@@ -180,7 +180,7 @@ class _CustomGoalScreenState extends State<CustomGoalScreen> {
       hintStyle: const TextStyle(color: Colors.white60),
       labelText: null,
       filled: true,
-      fillColor: Colors.white.withOpacity(0.12),
+      fillColor: Colors.white.withValues(alpha: 0.12),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
