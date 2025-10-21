@@ -1,9 +1,12 @@
+// lib/screens/onboarding/onboarding_summary_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../widgets/background_stars.dart';
 import '../../viewmodels/onboarding_view_model.dart';
-import '../goals/goal_suggest_screen.dart'; // <— ВАЖНО: из goals!
+import '../goals/goal_suggest_screen.dart';
+import '../auth/email_auth_dialog.dart';
+import '../../services/sync_service.dart';
 
 class OnboardingSummaryScreen extends StatelessWidget {
   const OnboardingSummaryScreen({super.key});
@@ -21,6 +24,7 @@ class OnboardingSummaryScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // top bar
                 Row(
                   children: [
                     IconButton(
@@ -32,6 +36,7 @@ class OnboardingSummaryScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
+
                 Text(
                   'Итоги',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -72,7 +77,7 @@ class OnboardingSummaryScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                 ],
 
-                // Энергия (если появится экран — начнёт показываться автоматически)
+                // Energy
                 if (vm.energy.isNotEmpty) ...[
                   Text(
                     'Что даёт энергию:',
@@ -105,27 +110,57 @@ class OnboardingSummaryScreen extends StatelessWidget {
                 const Spacer(),
 
                 // CTA
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const GoalSuggestScreen(),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1) Предложить цели
+                    FilledButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const GoalSuggestScreen(),
+                          ),
+                        );
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2CC796),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                      );
-                      // после возврата ничего не делаем — GoalSuggest сам уводит на Home
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2CC796),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
                       ),
+                      child: const Text('Предложить цели'),
                     ),
-                    child: const Text('Предложить цели'),
-                  ),
+                    const SizedBox(height: 10),
+
+                    // 2) Сохранить прогресс
+                    FilledButton.tonal(
+                      onPressed: () async {
+                        final ok = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => const EmailAuthDialog(),
+                        );
+                        if (!context.mounted) return;
+                        if (ok == true) {
+                          await SyncService().pushLocalToCloud();
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Синхронизировано с облаком'),
+                            ),
+                          );
+                        }
+                      },
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      child: const Text('Сохранить прогресс'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -139,7 +174,7 @@ class OnboardingSummaryScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         border: Border.all(color: Colors.white38),
         borderRadius: BorderRadius.circular(20),
       ),

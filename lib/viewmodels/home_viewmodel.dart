@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/goal.dart';
 import '../services/local_goal_store.dart';
+import '../services/analytics_service.dart';
 
 class HomeViewModel extends ChangeNotifier {
   final LocalGoalStore _local = LocalGoalStore();
@@ -38,6 +39,10 @@ class HomeViewModel extends ChangeNotifier {
     _items = [..._items, goal];
     _scheduleSave(); // дебаунс-сохранение
     notifyListeners();
+
+    // лог в Analytics (без ожидания)
+    AnalyticsService.instance.goalAdded(title: goal.title, category: category);
+
     debugPrint('[analytics] goal_added type=preset/custom? title="$title"');
   }
 

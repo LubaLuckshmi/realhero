@@ -88,7 +88,7 @@ class CategoriesScreen extends StatelessWidget {
     await showModalBottomSheet(
       context: context,
       useSafeArea: true,
-      backgroundColor: Colors.black.withOpacity(0.35),
+      backgroundColor: Colors.black.withValues(alpha: 0.35),
       barrierColor: Colors.black54,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -99,7 +99,7 @@ class CategoriesScreen extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             border: Border.all(color: Colors.white24),
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
           ),
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(
@@ -137,8 +137,9 @@ class CategoriesScreen extends StatelessWidget {
                         firstStep: p.firstStep,
                       );
                       if (ctx.mounted) Navigator.pop(ctx); // закрыть шит
-                      if (context.mounted)
-                        Navigator.pop(context); // вернуться на Home
+                      if (context.mounted) {
+                        Navigator.pop(context); // назад на Home
+                      }
                     },
                   ),
                 ),
@@ -173,6 +174,8 @@ class CategoriesScreen extends StatelessWidget {
         );
       },
     );
+
+    if (!context.mounted) return;
   }
 }
 
@@ -203,7 +206,7 @@ class _CategoryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.10),
+            color: Colors.white.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: Colors.white24),
           ),
@@ -288,7 +291,7 @@ class _PresetTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.10),
+        color: Colors.white.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white24),
       ),
@@ -306,13 +309,14 @@ class _PresetTile extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.flag, color: Colors.white70, size: 18),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(step, style: const TextStyle(color: Colors.white)),
-              ),
+            children: const [
+              Icon(Icons.flag, color: Colors.white70, size: 18),
+              SizedBox(width: 6),
             ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
+            child: Text(step, style: const TextStyle(color: Colors.white)),
           ),
           const SizedBox(height: 10),
           SizedBox(

@@ -141,7 +141,7 @@ class _EnergyTile extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          color: Colors.white.withOpacity(selected ? 0.20 : 0.08),
+          color: Colors.white.withValues(alpha:(selected ? 0.20 : 0.08)),
           border: Border.all(
             color: selected ? const Color(0xFF2CC796) : Colors.white24,
             width: selected ? 2 : 1,

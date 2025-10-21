@@ -20,7 +20,8 @@ class _CustomGoalScreenState extends State<CustomGoalScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _stepCtrl = TextEditingController();
-  late String? _category;
+  final _scroll = ScrollController();
+  String? _category;
 
   @override
   void initState() {
@@ -32,6 +33,7 @@ class _CustomGoalScreenState extends State<CustomGoalScreen> {
   void dispose() {
     _titleCtrl.dispose();
     _stepCtrl.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -62,6 +64,7 @@ class _CustomGoalScreenState extends State<CustomGoalScreen> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.transparent,
       body: BackgroundStars(
         child: SafeArea(
@@ -97,55 +100,60 @@ class _CustomGoalScreenState extends State<CustomGoalScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Форма
+                // Форма (скролл привязан к Scrollbar)
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          // Категория (необязательно)
-                          TextFormField(
-                            initialValue: _category,
-                            onChanged: (v) => _category = v,
-                            style: const TextStyle(color: Colors.white),
-                            textInputAction: TextInputAction.next,
-                            decoration: _inputDecoration(
-                              context,
-                              'Категория (необязательно)',
+                  child: Scrollbar(
+                    controller: _scroll,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _scroll,
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            // Категория (необязательно)
+                            TextFormField(
+                              initialValue: _category,
+                              onChanged: (v) => _category = v,
+                              style: const TextStyle(color: Colors.white),
+                              textInputAction: TextInputAction.next,
+                              decoration: _inputDecoration(
+                                context,
+                                'Категория (необязательно)',
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
+                            const SizedBox(height: 12),
 
-                          // Название цели
-                          TextFormField(
-                            controller: _titleCtrl,
-                            autofocus: true,
-                            style: const TextStyle(color: Colors.white),
-                            textInputAction: TextInputAction.next,
-                            decoration: _inputDecoration(
-                              context,
-                              'Название цели *',
+                            // Название цели
+                            TextFormField(
+                              controller: _titleCtrl,
+                              autofocus: true,
+                              style: const TextStyle(color: Colors.white),
+                              textInputAction: TextInputAction.next,
+                              decoration: _inputDecoration(
+                                context,
+                                'Название цели *',
+                              ),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Введите название цели'
+                                  : null,
                             ),
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Введите название цели'
-                                : null,
-                          ),
-                          const SizedBox(height: 12),
+                            const SizedBox(height: 12),
 
-                          // Первый шаг
-                          TextFormField(
-                            controller: _stepCtrl,
-                            style: const TextStyle(color: Colors.white),
-                            maxLines: 2,
-                            textInputAction: TextInputAction.done,
-                            decoration: _inputDecoration(
-                              context,
-                              'Первый шаг (необязательно)',
+                            // Первый шаг
+                            TextFormField(
+                              controller: _stepCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              maxLines: 3,
+                              textInputAction: TextInputAction.done,
+                              decoration: _inputDecoration(
+                                context,
+                                'Первый шаг (необязательно)',
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -180,7 +188,7 @@ class _CustomGoalScreenState extends State<CustomGoalScreen> {
       hintStyle: const TextStyle(color: Colors.white60),
       labelText: null,
       filled: true,
-      fillColor: Colors.white.withOpacity(0.12),
+      fillColor: Colors.white.withValues(alpha: 0.12),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
