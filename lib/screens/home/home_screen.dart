@@ -6,6 +6,8 @@ import '../../viewmodels/home_viewmodel.dart';
 import '../../widgets/background_stars.dart';
 import '../auth/email_auth_dialog.dart';
 import '../../services/sync_service.dart';
+import '../deep_focus/deep_focus_screen.dart';
+
 
 // добавили
 import '../goals/categories_screen.dart';
@@ -82,6 +84,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                     messenger.showSnackBar(
                       const SnackBar(content: Text('Цель сохранена 👌')),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                _AddTile(
+                  icon: Icons.psychology_alt_outlined,
+                  title: 'Глубокий фокус (ИИ)',
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DeepFocusScreen(),
+                      ),
                     );
                   },
                 ),
