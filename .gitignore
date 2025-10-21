@@ -37,3 +37,5 @@ android/app/build/
 .vscode/
 *.env
 openai.json
+# old backups
+ios.old*/
