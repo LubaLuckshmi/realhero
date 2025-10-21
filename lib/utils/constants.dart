@@ -1,4 +1,4 @@
-/// lib/utils/constants.dart
+// lib/utils/constants.dart
 
 /// Заголовок приложения
 const String appTitle = "RealHero";

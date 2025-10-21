@@ -1,0 +1,52 @@
+# ios/Podfile
+platform :ios, '15.0'
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug'   => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+# Определяем FLUTTER_ROOT
+def flutter_root
+  gen = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  if File.exist?(gen)
+    File.foreach(gen) do |line|
+      m = line.match(/FLUTTER_ROOT=(.*)/)
+      return m[1].strip if m
+    end
+  end
+  return ENV['FLUTTER_ROOT'] if ENV['FLUTTER_ROOT'] && !ENV['FLUTTER_ROOT'].empty?
+  which = `which flutter`.strip
+  raise "Flutter not found in PATH" if which.nil? || which.empty?
+  File.expand_path(File.join(File.dirname(File.dirname(which))))
+end
+
+# Подключаем podhelper из Flutter SDK
+require File.expand_path(File.join(flutter_root, 'packages', 'flutter_tools', 'bin', 'podhelper'), __FILE__)
+
+# Глобально модульные заголовки и статические фреймворки (для Flutter + Firebase)
+use_modular_headers!
+use_frameworks! :linkage => :static
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  flutter_install_all_ios_pods(File.dirname(File.realpath(__FILE__)))
+end
+
+# ВАЖНО: здесь передаём КАЖДЫЙ target, а не installer
+post_install do |installer|
+  # выставим минимальную iOS для всех конфигураций
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+
+  # хелпер Flutter ожидает target (и использует platform_name у target)
+  installer.pods_project.targets.each do |t|
+    flutter_additional_ios_build_settings(t)
+  end
+end

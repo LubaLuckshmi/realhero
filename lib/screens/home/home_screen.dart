@@ -73,13 +73,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: 'Создать свою цель',
                   onTap: () async {
                     Navigator.pop(ctx);
+                    // Сохраняем messenger ДО await, чтобы не использовать context после gap
+                    final messenger = ScaffoldMessenger.of(context);
                     await Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => const CustomGoalScreen(),
                       ),
                     );
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Цель сохранена 👌')),
                     );
                   },
@@ -109,20 +110,18 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Сохранить прогресс в облаке',
             icon: const Icon(Icons.cloud_upload_outlined),
             onPressed: () async {
-              // 1) Мягкий логин
+              // сохраняем ссылки до await
+              final messenger = ScaffoldMessenger.of(context);
+
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (_) => const EmailAuthDialog(),
               );
-
-              // 2) Если вошли — пушим локальные цели в Firestore
               if (ok == true) {
                 await SyncService().pushLocalToCloud();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Синхронизировано с облаком')),
-                  );
-                }
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Синхронизировано с облаком')),
+                );
               }
             },
           ),
@@ -193,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Список целей + видимый скроллбар
                 Expanded(
                   child: Scrollbar(
+                    controller: _scroll, // <-- ВАЖНО: привязали
                     thumbVisibility: true,
                     child: ListView.separated(
                       controller: _scroll,
@@ -207,6 +207,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           progress: g.progress,
                           onProgress: (v) => vm.setProgress(g, v),
                           onRemove: () async {
+                            // сохраняем messenger ДО await
+                            final messenger = ScaffoldMessenger.of(context);
                             final confirmed = await showDialog<bool>(
                               context: context,
                               builder: (ctx) => AlertDialog(
@@ -228,11 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                             if (confirmed == true) {
                               await vm.remove(g);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Цель удалена')),
-                                );
-                              }
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Цель удалена')),
+                              );
                             }
                           },
                         );

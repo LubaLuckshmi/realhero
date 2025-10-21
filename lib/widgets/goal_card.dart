@@ -1,5 +1,5 @@
 
-/// goal_card.dart — карточка цели
+// goal_card.dart — карточка цели
 import 'package:flutter/material.dart';
 import '../models/goal.dart';
 

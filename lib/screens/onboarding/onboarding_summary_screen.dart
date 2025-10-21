@@ -1,12 +1,10 @@
+// lib/screens/onboarding/onboarding_summary_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../widgets/background_stars.dart';
 import '../../viewmodels/onboarding_view_model.dart';
-// БЫЛО: '../goals/goal_suggest_screen.dart'
-// СТАЛО: новый экран генерации по ответам онбординга
-import 'suggest_goal_screen.dart';
-
+import '../goals/goal_suggest_screen.dart';
 import '../auth/email_auth_dialog.dart';
 import '../../services/sync_service.dart';
 
@@ -115,13 +113,13 @@ class OnboardingSummaryScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Предложить цели (новый экран генерации)
+                    // 1) Предложить цели
                     FilledButton(
                       onPressed: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const SuggestGoalScreen(),
+                            builder: (_) => const GoalSuggestScreen(),
                           ),
                         );
                       },
@@ -136,22 +134,22 @@ class OnboardingSummaryScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    // Сохранить прогресс (мягкая авторизация + синк)
+                    // 2) Сохранить прогресс
                     FilledButton.tonal(
                       onPressed: () async {
                         final ok = await showDialog<bool>(
                           context: context,
                           builder: (_) => const EmailAuthDialog(),
                         );
+                        if (!context.mounted) return;
                         if (ok == true) {
                           await SyncService().pushLocalToCloud();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Синхронизировано с облаком'),
-                              ),
-                            );
-                          }
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Синхронизировано с облаком'),
+                            ),
+                          );
                         }
                       },
                       style: FilledButton.styleFrom(
@@ -176,7 +174,7 @@ class OnboardingSummaryScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         border: Border.all(color: Colors.white38),
         borderRadius: BorderRadius.circular(20),
       ),

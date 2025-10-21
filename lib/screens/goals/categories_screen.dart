@@ -137,8 +137,9 @@ class CategoriesScreen extends StatelessWidget {
                         firstStep: p.firstStep,
                       );
                       if (ctx.mounted) Navigator.pop(ctx); // закрыть шит
-                      if (context.mounted)
+                      if (context.mounted) {
                         Navigator.pop(context); // назад на Home
+                      }
                     },
                   ),
                 ),
