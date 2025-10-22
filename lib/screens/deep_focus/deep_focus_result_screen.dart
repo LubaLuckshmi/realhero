@@ -1,12 +1,23 @@
-// lib/screens/deep_focus/deep_focus_result_screen.dart
 import 'package:flutter/material.dart';
 import 'package:realhero/widgets/background_stars.dart';
 import 'package:realhero/services/deep_focus_service.dart';
+import 'package:realhero/models/deep_focus.dart';
 
 class DeepFocusResultScreen extends StatelessWidget {
   const DeepFocusResultScreen({super.key, required this.advice});
 
   final DeepFocusAdvice advice;
+
+  void _finish(BuildContext context) => Navigator.of(context).pop(true);
+
+  void _createGoal(BuildContext context) {
+    // Делаем простую цель: заголовок короткий, первый шаг = совет
+    final intent = DeepFocusCreateGoal(
+      title: 'Фокус недели',
+      firstStep: advice.advice,
+    );
+    Navigator.of(context).pop(intent);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +35,7 @@ class DeepFocusResultScreen extends StatelessWidget {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => _finish(context),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -78,19 +89,39 @@ class DeepFocusResultScreen extends StatelessWidget {
                 ),
 
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2CC796),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _createGoal(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Создать цель из совета'),
                       ),
                     ),
-                    child: const Text('Понятно'),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => _finish(context),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2CC796),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        child: const Text('Понятно'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

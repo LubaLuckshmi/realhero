@@ -1,25 +1,26 @@
-// lib/services/deep_focus_service.dart
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 
-/// Результат "Глубокого фокуса"
+import '../models/deep_focus.dart';
+import 'profile_service.dart';
+
+/// Набор для экрана результата — оставляем для совместимости с твоим UI
 class DeepFocusAdvice {
-  final String summary; // краткое описание пользователя (1–3 предложения)
-  final String advice; // персональный совет (1–2 шага)
+  final String summary;
+  final String advice;
+  final String archetype;
+  final String stage;
 
-  DeepFocusAdvice({required this.summary, required this.advice});
-
-  Map<String, dynamic> toJson() => {'summary': summary, 'advice': advice};
-
-  static DeepFocusAdvice fromJson(Map<String, dynamic> m) => DeepFocusAdvice(
-    summary: (m['summary'] ?? '').toString().trim(),
-    advice: (m['advice'] ?? '').toString().trim(),
-  );
+  const DeepFocusAdvice({
+    required this.summary,
+    required this.advice,
+    required this.archetype,
+    required this.stage,
+  });
 }
 
-/// Сервис ИИ для Deep Focus. Работает отдельно от общего AIService, чтобы не трогать
-/// стабильный код генерации целей.
 class DeepFocusService {
   static final String _openaiKey =
       const String.fromEnvironment(
@@ -29,44 +30,49 @@ class DeepFocusService {
       ? const String.fromEnvironment('OPENAI_API_KEY')
       : (Platform.environment['OPENAI_API_KEY'] ?? '');
 
-  /// Главный метод. На вход — ответы на 4 вопроса. На выход — краткое описание и совет.
+  static const bool _debug = true;
+  static void _log(String s) {
+    if (_debug) print('[DeepFocus] $s');
+  }
+
+  /// Генерируем выжимку + совет и СРАЗУ сохраняем профиль локально
   static Future<DeepFocusAdvice> generate({
-    required String dislike,
-    required String priority,
-    required String meaning,
-    required String noFear,
+    required DeepFocusInputRaw raw,
   }) async {
     if (_openaiKey.isEmpty) {
-      // Без ключа — мягкий фолбэк (чтобы не ломать UX)
-      return DeepFocusAdvice(
-        summary:
-            'Ты стремишься к ясности и опоре на то, что по-настоящему важно, а лишнее уже хочется оставить позади.',
+      _log('EMPTY KEY — возвращаем дефолт');
+      final advice = DeepFocusAdvice(
+        summary: 'Ты стремишься к ясности и понимаемой системе действий.',
         advice:
-            'Выбери 1 область, где ощутим эмоциональный “шум”, и убери из неё один раздражитель сегодня. Затем запланируй 1 конкретный шаг на завтра, который ведёт к “главному”.',
+            'На неделю — один маленький ритуал: 10 минут без экрана после пробуждения.',
+        archetype: 'Исследователь',
+        stage: 'Поиск фокуса',
       );
+      await _saveProfile(advice, raw);
+      return advice;
     }
 
     final system = '''
-Ты — практичный психолог-коуч. Пользователь ответил на 4 вопроса. 
-Собери лаконичную выжимку и дай ясный совет действий на ближайшую неделю.
-Важно:
-- Не навешивай ярлыки, архетипы и диагнозы.
-- Максимум конкретики и спокойного тона.
-- Верни строго JSON-объект: {"summary":"...", "advice":"..."}.
-Язык — русский.
+Ты — психолог и коуч. Ты даёшь короткую выжимку и один практичный совет на неделю.
+Формат ответа: ЧИСТЫЙ JSON-объект без текста вокруг:
+{
+  "summary": "...",
+  "advice": "...",
+  "archetype": "...",
+  "stage": "..."
+}
+Язык — русский. Кратко, без воды.
 ''';
 
     final user = jsonEncode({
       'answers': {
-        'what_dislike_now': dislike,
-        'what_is_important': priority,
-        'what_is_meaning': meaning,
-        'if_no_fear': noFear,
+        'dislike': raw.dislike,
+        'priority': raw.priority,
+        'meaning': raw.meaning,
+        'noFear': raw.noFear,
       },
-      'style': {
-        'summary': '1–3 предложения, без клише',
-        'advice': '2 коротких шага на неделю, максимально прикладные',
-      },
+      'note':
+          'Ответы краткие: сделай выводы аккуратно. Совет — конкретное действие, выполнимое за 10–20 минут.',
     });
 
     final uri = Uri.parse('https://api.openai.com/v1/chat/completions');
@@ -76,12 +82,12 @@ class DeepFocusService {
     };
     final body = jsonEncode({
       'model': 'gpt-4o-mini',
-      'temperature': 0.7,
-      'max_tokens': 500,
+      'temperature': 0.5,
       'messages': [
         {'role': 'system', 'content': system},
         {'role': 'user', 'content': user},
       ],
+      'max_tokens': 500,
     });
 
     try {
@@ -89,52 +95,68 @@ class DeepFocusService {
           .post(uri, headers: headers, body: body)
           .timeout(const Duration(seconds: 40));
 
+      _log('status=${resp.statusCode}, bytes=${resp.bodyBytes.length}');
       if (resp.statusCode != 200) {
-        return _fallback(dislike, priority, meaning, noFear);
+        final snippet = utf8.decode(resp.bodyBytes);
+        _log('resp: ${snippet.substring(0, math.min(600, snippet.length))}');
+        // fallback
+        final advice = DeepFocusAdvice(
+          summary: 'Ты ищешь ясность и смысл в действиях.',
+          advice: 'На неделю — введи «1 тихий час» без уведомлений.',
+          archetype: 'Практик',
+          stage: 'Сбор ресурсов',
+        );
+        await _saveProfile(advice, raw);
+        return advice;
       }
 
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
       final content =
-          ((data['choices'] as List).first['message']['content'] as String?) ??
+          (((data['choices'] as List).first as Map)['message']
+                  as Map)['content']
+              as String? ??
           '{}';
 
-      final jsonText = _extractFirstJsonObject(_stripCodeFences(content));
-      final parsed = json.decode(jsonText);
-      if (parsed is Map<String, dynamic>) {
-        return DeepFocusAdvice.fromJson(parsed);
-      }
-      return _fallback(dislike, priority, meaning, noFear);
-    } catch (_) {
-      return _fallback(dislike, priority, meaning, noFear);
+      final jsonStr = content
+          .replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim();
+      final obj = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+      final advice = DeepFocusAdvice(
+        summary: (obj['summary'] ?? '').toString(),
+        advice: (obj['advice'] ?? '').toString(),
+        archetype: (obj['archetype'] ?? '').toString(),
+        stage: (obj['stage'] ?? '').toString(),
+      );
+
+      await _saveProfile(advice, raw);
+      return advice;
+    } catch (e) {
+      _log('error: $e');
+      final advice = DeepFocusAdvice(
+        summary: 'Ты стремишься к стабильности и контролю.',
+        advice: 'На неделю — веди короткую заметку: 3 строки в конце дня.',
+        archetype: 'Контролёр',
+        stage: 'Стабилизация',
+      );
+      await _saveProfile(advice, raw);
+      return advice;
     }
   }
 
-  // ————— helpers —————
-
-  static String _stripCodeFences(String s) =>
-      s.replaceAll('```json', '').replaceAll('```', '').trim();
-
-  static String _extractFirstJsonObject(String s) {
-    final start = s.indexOf('{');
-    final end = s.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return s.substring(start, end + 1);
-    }
-    return '{}';
-  }
-
-  static DeepFocusAdvice _fallback(
-    String dislike,
-    String priority,
-    String meaning,
-    String noFear,
-  ) {
-    final s =
-        'Ты хочешь больше опоры на "$priority" и смысла в "$meaning". '
-        'Есть напряжение из-за "$dislike", а без страха ты бы сделал(а): "$noFear".';
-    final a =
-        '1) Убери один раздражитель из области "$dislike" уже сегодня.\n'
-        '2) Запланируй на 30–45 минут конкретный шаг к "$noFear" в ближайшие 48 часов.';
-    return DeepFocusAdvice(summary: s, advice: a);
+  static Future<void> _saveProfile(
+    DeepFocusAdvice a,
+    DeepFocusInputRaw raw,
+  ) async {
+    final profile = DeepFocusResult(
+      archetype: a.archetype,
+      stage: a.stage,
+      summary: a.summary,
+      advice: a.advice,
+      createdAt: DateTime.now(),
+      raw: raw,
+    );
+    await ProfileService().save(profile);
   }
 }

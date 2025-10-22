@@ -6,12 +6,13 @@ import '../../viewmodels/home_viewmodel.dart';
 import '../../widgets/background_stars.dart';
 import '../auth/email_auth_dialog.dart';
 import '../../services/sync_service.dart';
-import '../deep_focus/deep_focus_screen.dart';
 
-
-// добавили
 import '../goals/categories_screen.dart';
 import '../goals/custom_goal_screen.dart';
+import '../deep_focus/deep_focus_screen.dart';
+import '../../services/profile_service.dart';
+import '../../models/deep_focus.dart';
+import '../../services/ai_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _scroll = ScrollController();
   bool _showUp = false;
+  DeepFocusResult? _profile;
 
   @override
   void initState() {
@@ -33,6 +35,12 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _showUp = need);
       }
     });
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final p = await ProfileService().loadFresh();
+    if (mounted) setState(() => _profile = p);
   }
 
   @override
@@ -58,6 +66,25 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _AddTile(
+                  icon: Icons.psychology_outlined,
+                  title: 'Глубокий фокус ИИ',
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    final ok = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => const DeepFocusScreen(),
+                      ),
+                    );
+                    if (ok == true && mounted) {
+                      await _loadProfile();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Профиль обновлён')),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                _AddTile(
                   icon: Icons.category_outlined,
                   title: 'Выбрать из категорий',
                   onTap: () {
@@ -75,7 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: 'Создать свою цель',
                   onTap: () async {
                     Navigator.pop(ctx);
-                    // Сохраняем messenger ДО await, чтобы не использовать context после gap
                     final messenger = ScaffoldMessenger.of(context);
                     await Navigator.of(context).push(
                       MaterialPageRoute(
@@ -84,19 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                     messenger.showSnackBar(
                       const SnackBar(content: Text('Цель сохранена 👌')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-                _AddTile(
-                  icon: Icons.psychology_alt_outlined,
-                  title: 'Глубокий фокус (ИИ)',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DeepFocusScreen(),
-                      ),
                     );
                   },
                 ),
@@ -125,9 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Сохранить прогресс в облаке',
             icon: const Icon(Icons.cloud_upload_outlined),
             onPressed: () async {
-              // сохраняем ссылки до await
               final messenger = ScaffoldMessenger.of(context);
-
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (_) => const EmailAuthDialog(),
@@ -148,8 +159,26 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Отступ под AppBar
               const SizedBox(height: 8),
+
+              // Мини-карточка профиля на неделю
+              if (_profile != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: _ProfileCard(
+                    profile: _profile!,
+                    onRefresh: () async {
+                      final ok = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => const DeepFocusScreen(),
+                        ),
+                      );
+                      if (ok == true) {
+                        await _loadProfile();
+                      }
+                    },
+                  ),
+                ),
 
               // Общий прогресс
               if (vm.items.isNotEmpty)
@@ -168,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
 
-              // Пустое состояние
+              // Пустое состояние / список
               if (vm.items.isEmpty)
                 Expanded(
                   child: Center(
@@ -204,13 +233,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 )
               else
-                // Список целей + видимый скроллбар
                 Expanded(
                   child: Scrollbar(
-                    controller: _scroll, // <-- ВАЖНО: привязали
+                    controller: _scroll,
                     thumbVisibility: true,
                     child: ListView.separated(
                       controller: _scroll,
+                      primary: false,
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                       itemCount: vm.items.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -222,7 +251,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           progress: g.progress,
                           onProgress: (v) => vm.setProgress(g, v),
                           onRemove: () async {
-                            // сохраняем messenger ДО await
                             final messenger = ScaffoldMessenger.of(context);
                             final confirmed = await showDialog<bool>(
                               context: context,
@@ -250,6 +278,46 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             }
                           },
+                          onSuggestStep: () async {
+                            final prof = await ProfileService().loadFresh();
+                            final step = await AIService.generateFirstStep(
+                              goalTitle: g.title,
+                              profile: prof,
+                            );
+                            if (!context.mounted) return;
+                            if (step == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Не удалось предложить шаг'),
+                                ),
+                              );
+                              return;
+                            }
+                            await showDialog(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Предложенный шаг'),
+                                content: Text(step),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Закрыть'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      final next = (g.progress + 0.25).clamp(
+                                        0.0,
+                                        1.0,
+                                      );
+                                      vm.setProgress(g, next);
+                                    },
+                                    child: const Text('Отметить как выполнено'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
@@ -264,7 +332,6 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: Stack(
         alignment: Alignment.bottomRight,
         children: [
-          // up
           AnimatedSlide(
             duration: const Duration(milliseconds: 200),
             offset: _showUp ? Offset.zero : const Offset(0.2, 0.6),
@@ -289,7 +356,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // main +
           FloatingActionButton.extended(
             heroTag: 'addGoal',
             onPressed: () => _openAddSheet(context),
@@ -304,6 +370,57 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({required this.profile, required this.onRefresh});
+
+  final DeepFocusResult profile;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Фокус недели',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${profile.archetype} • ${profile.stage}',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 8),
+          Text(profile.summary, style: const TextStyle(color: Colors.white)),
+          const SizedBox(height: 6),
+          Text(
+            'Совет: ${profile.advice}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onRefresh,
+                  child: const Text('Обновить профиль'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _GoalTile extends StatelessWidget {
   const _GoalTile({
     required this.title,
@@ -311,6 +428,7 @@ class _GoalTile extends StatelessWidget {
     required this.progress,
     required this.onProgress,
     required this.onRemove,
+    required this.onSuggestStep,
   });
 
   final String title;
@@ -318,6 +436,7 @@ class _GoalTile extends StatelessWidget {
   final double progress;
   final ValueChanged<double> onProgress;
   final VoidCallback onRemove;
+  final VoidCallback onSuggestStep;
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +448,7 @@ class _GoalTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white24),
         ),
-        padding: const EdgeInsets.all(16), // единый паддинг
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -368,6 +487,24 @@ class _GoalTile extends StatelessWidget {
                   ),
                 ],
               ),
+            ] else ...[
+              // быстрый экшен: предложить первый шаг, если его нет
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onSuggestStep,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white.withValues(alpha: 0.10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('Предложить первый шаг'),
+                ),
+              ),
             ],
 
             const SizedBox(height: 12),
@@ -385,7 +522,6 @@ class _GoalTile extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            // Счётчик шагов (условно 4 шага = 100%)
             Text(
               '${(progress * 4).round()}/4 шага',
               style: const TextStyle(color: Colors.white70, fontSize: 12),
