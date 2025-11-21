@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/deep_focus.dart';
 
 /// Модель одной подсказки цели
+/// 
 class GoalSuggestion {
   final String title;
   final String? firstStep;
@@ -272,5 +273,75 @@ class AIService {
     } catch (_) {
       return const [];
     }
+    
   }
+    /// Предложения 1–3 мини-шагов на сегодня (учитывает фокус недели и активные цели).
+  static Future<List<String>> suggestDailyActions({
+    required DeepFocusResult? profile,
+    required List<String> activeGoals,
+  }) async {
+    if (_openaiKey.isEmpty) return const [];
+
+    final system = '''
+Ты — ассистент "реального дня". Дай 1–3 очень коротких действия
+(каждое до 100 символов), которые пользователь может сделать сегодня.
+Учитывай его краткий профиль (аркетип/этап/совет) и активные цели.
+Ответ строго JSON-массив строк, без текста вокруг.
+''';
+
+    final user = jsonEncode({
+      'profile': profile == null
+          ? null
+          : {
+              'archetype': profile.archetype,
+              'stage': profile.stage,
+              'summary': profile.summary,
+              'advice': profile.advice,
+            },
+      'activeGoals': activeGoals,
+      'constraints': ['простые', 'выполнимые за 5–20 минут', 'без воды'],
+    });
+
+    final uri = Uri.parse('https://api.openai.com/v1/chat/completions');
+    final headers = {
+      'Authorization': 'Bearer $_openaiKey',
+      'Content-Type': 'application/json',
+    };
+    final body = jsonEncode({
+      'model': 'gpt-4o-mini',
+      'temperature': 0.6,
+      'messages': [
+        {'role': 'system', 'content': system},
+        {'role': 'user', 'content': user},
+      ],
+      'max_tokens': 300,
+    });
+
+    try {
+      final resp = await http
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 30));
+
+      if (resp.statusCode != 200) return const [];
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final content =
+          (data['choices'] as List).first['message']['content'] as String? ??
+          '[]';
+
+      final clean = _stripCodeFences(content);
+      final slice = _extractFirstJsonArray(clean);
+      final parsed = jsonDecode(slice);
+      if (parsed is List) {
+        return parsed
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .take(3)
+            .toList();
+      }
+      return const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+
 }

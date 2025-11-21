@@ -13,6 +13,8 @@ import '../deep_focus/deep_focus_screen.dart';
 import '../../services/profile_service.dart';
 import '../../models/deep_focus.dart';
 import '../../services/ai_service.dart';
+import '../today/today_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -149,6 +151,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SnackBar(content: Text('Синхронизировано с облаком')),
                 );
               }
+            },
+          ),
+          IconButton(
+            tooltip: 'Сегодня',
+            icon: const Icon(Icons.today_outlined),
+            onPressed: () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const TodayScreen()));
             },
           ),
         ],
