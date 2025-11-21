@@ -218,4 +218,59 @@ class AIService {
       return null;
     }
   }
+    /// ИИ-предложения коротких целей по категории.
+  /// Возвращает 2–4 идеи. Если ключ пустой/ошибка — вернёт [].
+  static Future<List<GoalSuggestion>> suggestQuickGoals(
+    String category, {
+    int n = 3,
+  }) async {
+    if (_openaiKey.isEmpty) return const [];
+
+    final uri = Uri.parse('https://api.openai.com/v1/chat/completions');
+    final headers = {
+      'Authorization': 'Bearer $_openaiKey',
+      'Content-Type': 'application/json',
+    };
+
+    final system =
+        '''
+Ты — коуч по целям. Дай ${n.clamp(2, 4)} коротких, конкретных целей
+в категории "$category". Для каждой — 1 первый шаг. Формат ответа строго:
+[
+  {"title":"...", "firstStep":"...", "tags":["$category"]},
+  ...
+]
+Без пояснений вокруг. Язык: русский. Избегай банальностей, делай практично.
+''';
+
+    final body = jsonEncode({
+      'model': 'gpt-4o-mini',
+      'temperature': 0.7,
+      'max_tokens': 500,
+      'messages': [
+        {'role': 'system', 'content': system},
+        {'role': 'user', 'content': 'Только JSON-массив, пожалуйста.'},
+      ],
+    });
+
+    try {
+      final resp = await http
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 35));
+
+      if (resp.statusCode != 200) return const [];
+
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final content =
+          ((data['choices'] as List).first['message'] as Map)['content']
+              as String? ??
+          '[]';
+
+      final clean = _stripCodeFences(content);
+      final jsonSlice = _extractFirstJsonArray(clean);
+      return parseIdeas(jsonSlice);
+    } catch (_) {
+      return const [];
+    }
+  }
 }
