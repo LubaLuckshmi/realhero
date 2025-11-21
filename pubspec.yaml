@@ -9,12 +9,12 @@ environment:
 
 dependencies:
   google_fonts: ^6.3.0
-  shared_preferences: ^2.2.3
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
   uuid: ^4.5.1
   http: ^1.2.2
+  shared_preferences: ^2.3.2
 
   # Firebase
   firebase_core: ^4.0.0

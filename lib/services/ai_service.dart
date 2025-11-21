@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
+import '../models/deep_focus.dart';
 
 /// Модель одной подсказки цели
 class GoalSuggestion {
@@ -48,8 +49,6 @@ class OnboardingSignal {
   };
 }
 
-/// Каркас ИИ-сервиса.
-/// Ключ читаем из --dart-define=OPENAI_API_KEY=... или из переменных окружения.
 class AIService {
   static final String _openaiKey =
       const String.fromEnvironment(
@@ -59,17 +58,12 @@ class AIService {
       ? const String.fromEnvironment('OPENAI_API_KEY')
       : (Platform.environment['OPENAI_API_KEY'] ?? '');
 
-  // Отладочные логи в консоль (flutter run)
   static const bool _debugAI = true;
   static void _log(String msg) {
-    if (_debugAI) {
-      // ignore: avoid_print
-      print('[AI] $msg');
-    }
+    if (_debugAI) print('[AI] $msg');
   }
 
-  /// Основной метод: просим модель вернуть массив GoalSuggestion в JSON.
-  /// Если что-то не так — возвращаем [], и UI берёт локальный fallback.
+  // -------- ЦЕЛИ ИЗ ОНБОРДИНГА --------
   static Future<List<GoalSuggestion>> suggestGoals(OnboardingSignal s) async {
     if (_openaiKey.isEmpty) {
       _log('EMPTY KEY -> fallback');
@@ -78,11 +72,9 @@ class AIService {
 
     final system = '''
 Ты — коуч по целям. На основе сигналов онбординга предложи 3–5 осмысленных целей.
-Формат строго JSON-массив, без пояснений. Каждый объект:
-{ "title": "…", "firstStep": "…", "tags": ["…", "…"] }
-Теги — 1–2 коротких ярлыка (категория/настрой).
-Избегай банальностей вроде "пить воду". Дай практичные и цепляющие формулировки.
-Язык ответа: русский.
+Формат строго JSON-массив без пояснений. Каждый объект:
+{ "title": "…", "firstStep": "…", "tags": ["…"] }
+Язык: русский. Избегай банальностей.
 ''';
 
     final user = jsonEncode({
@@ -90,13 +82,8 @@ class AIService {
       'examples': [
         {
           'title': 'Готовить «вечер тишины» раз в неделю',
-          'firstStep': 'Выбрать вечер и выключить все уведомления на 1 час',
+          'firstStep': 'Выбрать вечер и отключить уведомления на 1 час',
           'tags': ['баланс'],
-        },
-        {
-          'title': 'Собрать мини-портфолио из 3 работ',
-          'firstStep': 'Выбрать 1 кейс и описать результат в 3 строках',
-          'tags': ['карьера'],
         },
       ],
     });
@@ -130,15 +117,10 @@ class AIService {
 
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
       final choices = (data['choices'] as List?) ?? const [];
-      if (choices.isEmpty) {
-        _log('no choices');
-        return const [];
-      }
+      if (choices.isEmpty) return const [];
 
       final content =
           (choices.first as Map)['message']?['content'] as String? ?? '[]';
-
-      // иногда модель окружает JSON тройными кавычками ```json
       final jsonSlice = _extractFirstJsonArray(_stripCodeFences(content));
       final ideas = parseIdeas(jsonSlice);
       _log('ideas parsed: ${ideas.length}');
@@ -149,7 +131,6 @@ class AIService {
     }
   }
 
-  /// Парсинг массива подсказок из JSON-строки
   static List<GoalSuggestion> parseIdeas(String jsonStr) {
     try {
       final data = json.decode(jsonStr);
@@ -165,17 +146,131 @@ class AIService {
     }
   }
 
-  /// Удаляем ```json … ``` оболочку
   static String _stripCodeFences(String s) =>
       s.replaceAll('```json', '').replaceAll('```', '').trim();
 
-  /// Вырезаем первый корректный JSON-массив из произвольной строки
   static String _extractFirstJsonArray(String s) {
     final start = s.indexOf('[');
     final end = s.lastIndexOf(']');
-    if (start >= 0 && end > start) {
-      return s.substring(start, end + 1);
-    }
+    if (start >= 0 && end > start) return s.substring(start, end + 1);
     return '[]';
+  }
+
+  // -------- ПРЕДЛОЖИТЬ ПЕРВЫЙ ШАГ С УЧЁТОМ ПРОФИЛЯ --------
+  static Future<String?> generateFirstStep({
+    required String goalTitle,
+    DeepFocusResult? profile,
+  }) async {
+    if (_openaiKey.isEmpty) return null;
+
+    final system = '''
+Ты — коуч по маленьким действиям. Дай ОДИН очень конкретный шаг на 10–20 минут,
+чтобы продвинуть цель. Возвращай короткое предложение, без нумераций.
+Язык — русский.
+''';
+
+    final context = {
+      'goal': goalTitle,
+      if (profile != null)
+        'profile': {
+          'archetype': profile.archetype,
+          'stage': profile.stage,
+          'summary': profile.summary,
+          'advice': profile.advice,
+          'raw': {
+            'dislike': profile.raw.dislike,
+            'priority': profile.raw.priority,
+            'meaning': profile.raw.meaning,
+            'noFear': profile.raw.noFear,
+          },
+        },
+    };
+
+    final user = jsonEncode(context);
+
+    final uri = Uri.parse('https://api.openai.com/v1/chat/completions');
+    final headers = {
+      'Authorization': 'Bearer $_openaiKey',
+      'Content-Type': 'application/json',
+    };
+    final body = jsonEncode({
+      'model': 'gpt-4o-mini',
+      'temperature': 0.6,
+      'messages': [
+        {'role': 'system', 'content': system},
+        {'role': 'user', 'content': user},
+      ],
+      'max_tokens': 150,
+    });
+
+    try {
+      final resp = await http
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 30));
+
+      if (resp.statusCode != 200) return null;
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final choices = (data['choices'] as List?) ?? const [];
+      if (choices.isEmpty) return null;
+      final content = (choices.first as Map)['message']?['content'] as String?;
+      return content?.trim();
+    } catch (_) {
+      return null;
+    }
+  }
+    /// ИИ-предложения коротких целей по категории.
+  /// Возвращает 2–4 идеи. Если ключ пустой/ошибка — вернёт [].
+  static Future<List<GoalSuggestion>> suggestQuickGoals(
+    String category, {
+    int n = 3,
+  }) async {
+    if (_openaiKey.isEmpty) return const [];
+
+    final uri = Uri.parse('https://api.openai.com/v1/chat/completions');
+    final headers = {
+      'Authorization': 'Bearer $_openaiKey',
+      'Content-Type': 'application/json',
+    };
+
+    final system =
+        '''
+Ты — коуч по целям. Дай ${n.clamp(2, 4)} коротких, конкретных целей
+в категории "$category". Для каждой — 1 первый шаг. Формат ответа строго:
+[
+  {"title":"...", "firstStep":"...", "tags":["$category"]},
+  ...
+]
+Без пояснений вокруг. Язык: русский. Избегай банальностей, делай практично.
+''';
+
+    final body = jsonEncode({
+      'model': 'gpt-4o-mini',
+      'temperature': 0.7,
+      'max_tokens': 500,
+      'messages': [
+        {'role': 'system', 'content': system},
+        {'role': 'user', 'content': 'Только JSON-массив, пожалуйста.'},
+      ],
+    });
+
+    try {
+      final resp = await http
+          .post(uri, headers: headers, body: body)
+          .timeout(const Duration(seconds: 35));
+
+      if (resp.statusCode != 200) return const [];
+
+      final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      final content =
+          ((data['choices'] as List).first['message'] as Map)['content']
+              as String? ??
+          '[]';
+
+      final clean = _stripCodeFences(content);
+      final jsonSlice = _extractFirstJsonArray(clean);
+      return parseIdeas(jsonSlice);
+    } catch (_) {
+      return const [];
+    }
   }
 }

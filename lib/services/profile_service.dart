@@ -1,23 +1,23 @@
-// profile_service.dart — профиль пользователя (дата рождения) в users/{uid}
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user_profile.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/deep_focus.dart';
 
+/// Простое локальное хранилище профиля (SharedPreferences)
 class ProfileService {
-  DocumentReference<Map<String, dynamic>> _doc(String uid) =>
-      FirebaseFirestore.instance.collection('users').doc(uid);
+  static const _kProfile = 'deep_focus_profile_v1';
 
-  Future<UserProfile?> getProfile(String uid) async {
-    final snap = await _doc(uid).get();
-    if (!snap.exists) return null;
-    final data = Map<String, dynamic>.from(snap.data() ?? {});
-    data.remove('goals'); // на всякий случай
-    return UserProfile.fromMap(data);
+  Future<void> save(DeepFocusResult r) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kProfile, r.toJson().toString());
   }
 
-  Future<void> saveBirthDate(String uid, DateTime birthDate) async {
-    await _doc(
-      uid,
-    ).set({'birthDate': birthDate.toIso8601String()}, SetOptions(merge: true));
+  Future<DeepFocusResult?> loadFresh() async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString(_kProfile);
+    return DeepFocusResult.tryParse(s);
+  }
+
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kProfile);
   }
 }
-
