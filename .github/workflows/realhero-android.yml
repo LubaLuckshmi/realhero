@@ -58,6 +58,14 @@ jobs:
         env:
           REALHERO_CAPTURE_DIR: /tmp/realhero-captures
         run: flutter test
+      - name: Upload screen captures even when a later check fails
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: RealHero-screens-${{ github.run_id }}
+          retention-days: 3
+          if-no-files-found: ignore
+          path: /tmp/realhero-captures/
       - name: Build native Android release without a private key
         run: flutter build apk --release --no-pub
       - name: Collect unsigned APK and public verification tools

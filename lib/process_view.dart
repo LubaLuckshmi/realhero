@@ -430,7 +430,10 @@ class _ProcessControl extends StatelessWidget {
   const _ProcessControl({required this.icon, required this.label,
     required this.scale, required this.onTap, this.primary = false});
   @override
-  Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(18),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
     Container(decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: primary
       ? [BoxShadow(color: violet.withValues(alpha: .3), blurRadius: 26)] : null),
       child: IconButton.filledTonal(onPressed: onTap, tooltip: label,
@@ -442,7 +445,7 @@ class _ProcessControl extends StatelessWidget {
     SizedBox(height: 7 * scale),
     Text(label, textAlign: TextAlign.center,
       style: TextStyle(fontSize: 12 * scale, height: 1.2)),
-  ]);
+  ])));
 }
 
 class _ResultButton extends StatelessWidget {

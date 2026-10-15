@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'domain.dart';
 import 'discovery.dart';
+import 'backup.dart';
 
 abstract class JsonStorage {
   Future<String?> read(String key);
@@ -71,14 +72,19 @@ class RealHeroStore extends ChangeNotifier {
   Future<void> load() async {
     if (loaded) return;
     String? raw;
+    Map<String, dynamic>? decodedSnapshot;
     try {
       raw = await storage.read(storageKey);
-      if (raw != null) state = AppState.fromJson(jsonDecode(raw));
+      if (raw != null) {
+        decodedSnapshot = jsonObject(jsonDecode(raw));
+        state = AppState.fromJson(decodedSnapshot);
+      }
     } catch (_) {
       try {
         final backup = await storage.read(backupKey);
         if (backup != null) {
-          state = AppState.fromJson(jsonDecode(backup));
+          decodedSnapshot = jsonObject(jsonDecode(backup));
+          state = AppState.fromJson(decodedSnapshot);
           recoveryMessage =
               'Состояние восстановлено из последней сохранённой копии.';
         } else {
@@ -97,9 +103,14 @@ class RealHeroStore extends ChangeNotifier {
       }
     }
     try {
-      final savedPersonal = await storage.read(personalKey);
-      if (savedPersonal != null) {
-        _personalState = AppState.fromJson(jsonDecode(savedPersonal));
+      if (decodedSnapshot?.containsKey('personalSnapshot') ?? false) {
+        final personal = decodedSnapshot!['personalSnapshot'];
+        if (personal != null) _personalState = AppState.fromJson(personal);
+      } else {
+        final savedPersonal = await storage.read(personalKey);
+        if (savedPersonal != null) {
+          _personalState = AppState.fromJson(jsonDecode(savedPersonal));
+        }
       }
     } catch (_) {
       /* Primary scenario remains readable if the optional demo backup fails. */
@@ -113,13 +124,9 @@ class RealHeroStore extends ChangeNotifier {
   }
 
   void _changed() {
-    final snapshot = jsonEncode(state.toJson());
-    final personal = _personalState == null
-        ? null
-        : jsonEncode(_personalState!.toJson());
+    final snapshot = RealHeroBackup(state, _personalState).snapshot;
     _writes = _writes.then((_) async {
       try {
-        if (personal != null) await storage.write(personalKey, personal);
         await storage.write(backupKey, snapshot);
         await storage.write(storageKey, snapshot);
         if (persistenceError != null) {
@@ -136,6 +143,24 @@ class RealHeroStore extends ChangeNotifier {
   }
 
   Future<void> flush() => _writes;
+  String exportBackup() => RealHeroBackup(state, _personalState).encode();
+
+  Future<void> restoreBackup(RealHeroBackup backup) async {
+    await flush();
+    // Keep the previous state, then commit all imported state in one write.
+    // If either write fails, in-memory state and the primary save stay intact.
+    await storage.write(
+      'realhero.before-import.v1',
+      RealHeroBackup(state, _personalState).snapshot,
+    );
+    await storage.write(storageKey, backup.snapshot);
+    state = backup.state;
+    _personalState = backup.personalState;
+    persistenceError = null;
+    recoveryMessage = null;
+    _changed();
+    await flush();
+  }
   Future<void> retrySave() async {
     _changed();
     await flush();

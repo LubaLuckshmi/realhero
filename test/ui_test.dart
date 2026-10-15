@@ -520,6 +520,10 @@ void main() {
         expect(tester.takeException(), isNull);
         tester.state<NavigatorState>(find.byType(Navigator).last).pop();
         await tester.pumpAndSettle();
+        if (size.width < 760) {
+          await tester.binding.handlePopRoute();
+          await tester.pumpAndSettle();
+        }
         await tapText(tester, 'Путь');
         await tapText(tester, 'Профиль');
         if (size.width >= 760) {

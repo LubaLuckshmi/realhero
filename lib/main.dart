@@ -9,6 +9,7 @@ import 'widgets.dart';
 import 'discovery.dart';
 import 'discovery_view.dart';
 import 'process_view.dart';
+import 'backup.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -895,6 +896,64 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
     ],
   );
 
+  Future<void> exportHistory() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Сохранить историю'),
+          content: const Text('В файле будут твои цели, история и подключение к Лее. Сохрани его в личную папку.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Сохранить')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      await s.flush();
+      final saved = await const MethodChannel('realhero/actions').invokeMethod<bool>(
+        'saveBackup', {'content': s.exportBackup()},
+      );
+      if (saved == true) notice('История сохранена в файл.');
+    } catch (_) {
+      notice('Не удалось сохранить файл. История в приложении остаётся на месте.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> importHistory() async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      final raw = await const MethodChannel('realhero/actions').invokeMethod<String>('openBackup');
+      if (raw == null || !mounted) return;
+      final backup = RealHeroBackup.decode(raw);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Восстановить историю?'),
+          content: Text('В файле: ${backup.state.goals.length} целей, ${backup.state.missions.length} миссий. Текущую историю заменит сохранение из файла.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Восстановить')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      await s.restoreBackup(backup);
+      if (!mounted) return;
+      setState(() { tab = 0; scene = 'today'; error = null; chatInput.clear(); });
+      notice('История и подключение восстановлены.');
+    } catch (_) {
+      notice('Не удалось восстановить сохранение. Проверь файл и свободное место.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Widget profilePage() => scroll(
     Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1040,6 +1099,10 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
         ),
         gap(10),
         arrowRow(Icons.history, 'История миссий', historySheet),
+        gap(10),
+        arrowRow(Icons.save_alt, 'Сохранить историю в файл', exportHistory),
+        gap(10),
+        arrowRow(Icons.restore, 'Восстановить историю', importHistory),
         gap(16),
         GlassPanel(
           child: Text(
