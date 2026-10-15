@@ -1,24 +1,13 @@
-# realhero
+# RealHero · Android 0.2.1
 
-Flutter-приложение (MVVM) с локальными целями, онбордингом и лёгкой авторизацией (Firebase). В спринте 4 добавили ИИ-подсказки целей.
+Native Flutter/Dart application with two onboarding paths, short tap-based discovery and a contextual in-progress screen based on the approved design.
 
-## Запуск (без секретов в репозитории)
+The Android package remains `app.realhero.realhero`, with the launcher label `RealHero`. This branch contains the current application sources and offline tests. It does not deploy a server. No API keys, access tokens, personal history, spending ledgers or host configuration are included.
 
-**1) Установите переменную окружения с ключом:**
-```bash
-# macOS (zsh):
-echo 'export OPENAI_API_KEY="PASTE_YOUR_KEY_HERE"' >> ~/.zshrc
-source ~/.zshrc
+The workflow pins Flutter 3.47.7 and official actions, runs server tests with a mocked provider, analyzes and tests Flutter, renders widget captures, and builds an unsigned release APK. The central Leia button opens the implemented text chat. Voice recording, contact availability and external actions are not simulated.
 
-## Getting Started
+CI never receives a private signing key. Its unsigned artifact is an internal build output, not an installable delivery. A release must be signed outside CI with a durably preserved Android key and verified before delivery. Matching the original package ID alone does not make it compatible with an installation signed with a different key.
 
-This project is a starting point for a Flutter application.
+The previous installation's signing key has not been recovered. No in-place update or data migration has been verified. Do not uninstall the existing application before its data has been safely copied and a restoration method tested.
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Personal AI uses a separately configured HTTPS server. The build makes no live model calls and does not change the API budget or deployed services.

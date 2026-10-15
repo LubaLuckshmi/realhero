@@ -1,0 +1,13 @@
+{
+  "name": "realhero-leia-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20.12" },
+  "scripts": {
+    "start": "node --env-file=.env.local server.mjs",
+    "start:environment": "node server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "token": "node -e \"process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url')+'\\n')\""
+  }
+}

@@ -1,0 +1,90 @@
+name: RealHero Android
+
+on:
+  push:
+    branches: [realhero-android-0.2.1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realhero-android
+  cancel-in-progress: true
+
+jobs:
+  android:
+    if: github.repository == 'LubaLuckshmi/realhero' && github.ref == 'refs/heads/realhero-android-0.2.1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      BOT: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - name: Check out current RealHero sources
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Select JDK 17
+        shell: bash
+        run: |
+          test -d "$JAVA_HOME_17_X64"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_17_X64" >> "$GITHUB_PATH"
+      - name: Install the verified Flutter version
+        shell: bash
+        run: |
+          git init "$RUNNER_TEMP/realhero-flutter"
+          git -C "$RUNNER_TEMP/realhero-flutter" remote add origin https://github.com/flutter/flutter.git
+          git -C "$RUNNER_TEMP/realhero-flutter" fetch --depth 1 origin abaf9c523780a608bd46686fd5e53740a07077f8
+          git -C "$RUNNER_TEMP/realhero-flutter" checkout --detach FETCH_HEAD
+          printf '%s/bin\n' "$RUNNER_TEMP/realhero-flutter" >> "$GITHUB_PATH"
+      - name: Configure Android SDK
+        shell: bash
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0'
+          flutter config --no-analytics --android-sdk "$ANDROID_HOME"
+          flutter precache --android
+          flutter --version
+      - name: Resolve Dart dependencies
+        run: flutter pub get
+      - name: Check the server with a mocked provider
+        run: node --test server/test/*.test.mjs
+      - name: Analyze Flutter sources
+        run: flutter analyze
+      - name: Run Flutter tests and render captures
+        env:
+          REALHERO_CAPTURE_DIR: /tmp/realhero-captures
+        run: flutter test
+      - name: Build native Android release without a private key
+        run: flutter build apk --release --no-pub
+      - name: Collect unsigned APK and public verification tools
+        shell: bash
+        run: |
+          mkdir -p android-output
+          cp build/app/outputs/flutter-apk/app-release.apk android-output/RealHero-unsigned.apk
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" android-output/apksigner.jar
+          cp "$ANDROID_HOME/build-tools/36.0.0/aapt2" android-output/aapt2
+          cp "$ANDROID_HOME/build-tools/36.0.0/NOTICE.txt" android-output/Android-tools-NOTICE.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging android-output/RealHero-unsigned.apk > android-output/package-badging.txt
+          grep "package: name='app.realhero.realhero'" android-output/package-badging.txt
+          if grep -q application-debuggable android-output/package-badging.txt; then
+            echo 'Refusing a debuggable release.' >&2
+            exit 1
+          fi
+          if java -jar android-output/apksigner.jar verify android-output/RealHero-unsigned.apk >/dev/null 2>&1; then
+            echo 'Refusing an unexpectedly signed CI artifact.' >&2
+            exit 1
+          fi
+          cd android-output
+          sha256sum RealHero-unsigned.apk apksigner.jar aapt2 > SHA256SUMS
+      - name: Upload build for signing and visual inspection
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: RealHero-unsigned-${{ github.run_id }}
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            android-output/
+            /tmp/realhero-captures/
