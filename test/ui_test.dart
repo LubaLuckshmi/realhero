@@ -30,6 +30,9 @@ Future<RealHeroStore> pumpApp(
   UiMemoryStorage? disk,
   bool demo = false,
 }) async {
+  final previousShadows = debugDisableShadows;
+  debugDisableShadows = false;
+  addTearDown(() => debugDisableShadows = previousShadows);
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
   final store = RealHeroStore(storage: disk ?? UiMemoryStorage());
@@ -70,6 +73,12 @@ Future<void> screenshot(WidgetTester tester, String name) async {
   await tester.pumpAndSettle();
   final boundary =
       captureKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  void repaint(RenderObject object) {
+    object.markNeedsPaint();
+    object.visitChildren(repaint);
+  }
+  repaint(boundary);
+  await tester.pumpAndSettle();
   await tester.runAsync(() async {
     final rendered = await boundary.toImage(pixelRatio: 2);
     final data = await rendered.toByteData(format: ui.ImageByteFormat.png);
@@ -118,6 +127,7 @@ void main() {
       expect(tester.getRect(find.byKey(const ValueKey('today-preparation'))).top,
         greaterThan(tester.getRect(find.byKey(const ValueKey('today-title'))).bottom));
       await tapText(tester, 'Посмотреть подготовку');
+      expect(find.byKey(const ValueKey('mission-primary-action')).hitTestable(), findsOneWidget);
       await screenshot(tester, 'reference_mission_${size.width.toInt()}');
       final photo = tester.getRect(find.byKey(const ValueKey('mission-header-photo')));
       expect(photo.height, lessThan(size.height * .4));
@@ -137,6 +147,7 @@ void main() {
     store.acceptPlan({
       'reply': 'Первый шаг готов.', 'needsClarification': false,
       'mission': {
+        'goalId': store.goal!.id,
         'title': 'Минимальная практика внимательности', 'minutes': 5,
         'why': 'Для короткого шага без общения.', 'oneAction': 'Рассмотри один предмет рядом.',
         'chapter': 'Начало', 'lightAction': 'Посмотри одну минуту.',

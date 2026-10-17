@@ -494,6 +494,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       onBack: () => setState(() => scene = 'today'), onOptions: missionOptions,
       onLeia: () => openChat(), onBegin: begin, onNext: nextMission,
       onMaterial: materialEditor,
+      onStepDetails: (step) => showText(step.title, step.hint),
       onChange: () => adapt('Нужен другой способ достижения моей цели вместо текущей миссии.'));
   }
 
@@ -585,10 +586,11 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
-                    'assets/images/avatar.png',
+                    'assets/images/horizon-approved.png',
                     width: 105,
                     height: 105,
                     fit: BoxFit.cover,
+                    alignment: Alignment.bottomCenter,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -845,7 +847,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
             child: Stack(
               children: [
                 Image.asset(
-                  'assets/images/horizon.png',
+                  'assets/images/horizon-approved.png',
                   height: 118,
                   width: double.infinity,
                   fit: BoxFit.cover,

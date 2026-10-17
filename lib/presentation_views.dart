@@ -43,7 +43,7 @@ class TodayView extends StatelessWidget {
       child: Stack(children: [
         Positioned(top: 0, left: 0, right: 0, height: stageHeight + 64 * scale,
           child: Stack(fit: StackFit.expand, children: [
-            Image.asset('assets/images/horizon.png', key: const ValueKey('today-landscape'),
+            Image.asset('assets/images/horizon-approved.png', key: const ValueKey('today-landscape'),
               fit: BoxFit.cover, alignment: Alignment.bottomCenter),
             DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
               begin: Alignment.topCenter, end: Alignment.bottomCenter,
@@ -115,17 +115,19 @@ class MissionView extends StatelessWidget {
   final Mission mission;
   final bool isDemo;
   final VoidCallback onBack, onOptions, onLeia, onBegin, onNext, onChange;
+  final ValueChanged<MissionStep> onStepDetails;
   final ValueChanged<PreparedMaterial> onMaterial;
   const MissionView({super.key, required this.mission, required this.isDemo,
     required this.onBack, required this.onOptions, required this.onLeia,
-    required this.onBegin, required this.onNext, required this.onChange, required this.onMaterial});
+    required this.onBegin, required this.onNext, required this.onChange, required this.onMaterial, required this.onStepDetails});
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(builder: (context, bounds) {
     final scale = sceneScale(bounds);
     final inset = 22 * scale;
-    final photoHeight = 184 * scale;
-    return ColoredBox(color: ink, child: SingleChildScrollView(
+    final photoHeight = 160 * scale;
+    return ColoredBox(color: ink, child: Column(children: [
+      Expanded(child: SingleChildScrollView(
       key: ValueKey('mission-${mission.id}'),
       child: Stack(children: [
         Positioned(top: 0, left: 0, right: 0, height: photoHeight + 42 * scale,
@@ -155,7 +157,8 @@ class MissionView extends StatelessWidget {
             SizedBox(height: 24 * scale),
             for (var i = 0; i < mission.steps.length; i++)
               MissionTimelineRow(step: mission.steps[i], number: i + 1,
-                current: i == mission.currentStep, last: i == mission.steps.length - 1, scale: scale),
+                current: i == mission.currentStep, last: i == mission.steps.length - 1, scale: scale,
+                onTap: () => onStepDetails(mission.steps[i])),
             SizedBox(height: 9 * scale),
             for (final material in mission.materials) ...[
               GlassPanel(padding: EdgeInsets.symmetric(horizontal: 16 * scale, vertical: 11 * scale),
@@ -170,13 +173,18 @@ class MissionView extends StatelessWidget {
                 ])),
               SizedBox(height: 8 * scale),
             ],
-            LeiaLine('Я всё подготовила.', onTap: onLeia, scale: scale),
-            ActionButton(mission.isClosed ? 'Подготовить следующий ход' : 'Перейти к действию',
-              icon: Icons.near_me, onPressed: mission.isClosed ? onNext : onBegin),
             TextButton(onPressed: onChange, child: const Text('Изменить миссию', style: TextStyle(fontSize: 13))),
           ])),
       ]),
-    ));
+    )),
+      Padding(padding: EdgeInsets.fromLTRB(inset, 0, inset, 10),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          LeiaLine('Я всё подготовила.', onTap: onLeia, scale: scale),
+          ActionButton(mission.isClosed ? 'Подготовить следующий ход' : 'Перейти к действию',
+            key: const ValueKey('mission-primary-action'),
+            icon: Icons.near_me, onPressed: mission.isClosed ? onNext : onBegin),
+        ])),
+    ]));
   });
 }
 
@@ -185,13 +193,15 @@ class MissionTimelineRow extends StatelessWidget {
   final int number;
   final bool current, last;
   final double scale;
+  final VoidCallback onTap;
   const MissionTimelineRow({super.key, required this.step, required this.number,
-    required this.current, required this.last, required this.scale});
+    required this.current, required this.last, required this.scale, required this.onTap});
   @override
-  Widget build(BuildContext context) => Stack(children: [
+  Widget build(BuildContext context) => Semantics(button: true, label: 'Подробнее: ${step.title}',
+    child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(14), child: Stack(children: [
     if (!last) Positioned(left: 23 * scale, top: 45 * scale, bottom: 0,
       child: Container(width: 1.2, color: current ? teal.withValues(alpha: .6) : const Color(0xFF35515B))),
-    Padding(padding: EdgeInsets.only(bottom: 22 * scale), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Padding(padding: EdgeInsets.only(bottom: 17 * scale), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Container(width: 47 * scale, height: 47 * scale,
         decoration: BoxDecoration(shape: BoxShape.circle, color: current ? teal : panel,
           border: Border.all(color: current ? teal : const Color(0xFF62818E)),
@@ -200,12 +210,13 @@ class MissionTimelineRow extends StatelessWidget {
         child: Text('$number', style: TextStyle(fontSize: 24 * scale, color: current ? ink : muted))),
       SizedBox(width: 19 * scale),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(step.title, style: TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w700, height: 1.2)),
+        Text(step.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w700, height: 1.2)),
         SizedBox(height: 4 * scale),
-        Text(step.hint, style: TextStyle(fontSize: 14 * scale, color: muted, height: 1.3)),
+        Text(step.hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14 * scale, color: muted, height: 1.3)),
       ])),
+      Icon(Icons.chevron_right, size: 17 * scale, color: muted),
     ])),
-  ]);
+  ])));
 }
 
 class HeroStar extends StatelessWidget {
