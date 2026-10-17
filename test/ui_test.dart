@@ -30,9 +30,6 @@ Future<RealHeroStore> pumpApp(
   UiMemoryStorage? disk,
   bool demo = false,
 }) async {
-  final previousShadows = debugDisableShadows;
-  debugDisableShadows = false;
-  addTearDown(() => debugDisableShadows = previousShadows);
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
   final store = RealHeroStore(storage: disk ?? UiMemoryStorage());
@@ -77,6 +74,9 @@ Future<void> screenshot(WidgetTester tester, String name) async {
     object.markNeedsPaint();
     object.visitChildren(repaint);
   }
+  final previousShadows = debugDisableShadows;
+  debugDisableShadows = false;
+  try {
   repaint(boundary);
   await tester.pumpAndSettle();
   await tester.runAsync(() async {
@@ -86,6 +86,11 @@ Future<void> screenshot(WidgetTester tester, String name) async {
     await File('$directory/$name.png').writeAsBytes(data!.buffer.asUint8List());
     rendered.dispose();
   });
+  } finally {
+    debugDisableShadows = previousShadows;
+    repaint(boundary);
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {
