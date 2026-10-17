@@ -10,6 +10,7 @@ import 'discovery.dart';
 import 'discovery_view.dart';
 import 'process_view.dart';
 import 'backup.dart';
+import 'presentation_views.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +43,14 @@ class RealHeroApp extends StatelessWidget {
         secondary: violet,
         surface: panel,
         onPrimary: ink,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+          color: states.contains(WidgetState.selected) ? teal : muted, fontSize: 12,
+          fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w400)),
+        iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
+          color: states.contains(WidgetState.selected) ? teal : const Color(0xFFD6E2E7), size: 26)),
+        surfaceTintColor: Colors.transparent,
       ),
       textTheme: const TextTheme(
         bodyMedium: TextStyle(fontSize: 15, height: 1.4, color: Colors.white),
@@ -160,7 +169,8 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final wide = MediaQuery.sizeOf(context).width >= 760;
+    final size = MediaQuery.sizeOf(context);
+    final wide = size.width >= 900 && size.width > size.height;
     final inProcess = tab == 0 && scene == 'process';
     final leiaOverProcess = tab == 2 && scene == 'process';
     final content = SafeArea(
@@ -184,7 +194,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       ),
       const NavigationDestination(icon: Icon(Icons.bar_chart), label: 'Путь'),
       const NavigationDestination(
-        icon: Icon(Icons.graphic_eq, color: violet),
+        icon: LeiaNavIcon(),
         label: 'Лея',
       ),
       const NavigationDestination(
@@ -212,6 +222,9 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
             if (wide)
               NavigationRail(
                 backgroundColor: ink,
+                indicatorColor: teal.withValues(alpha: .08),
+                selectedIconTheme: const IconThemeData(color: teal),
+                selectedLabelTextStyle: const TextStyle(color: teal),
                 selectedIndex: tab,
                 onDestinationSelected: select,
                 labelType: NavigationRailLabelType.all,
@@ -228,7 +241,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
               child: Center(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: wide ? 600 : double.infinity,
+                    maxWidth: size.width > 660 ? 660 : double.infinity,
                   ),
                   child: Column(
                     children: [
@@ -271,8 +284,8 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
             ? null
             : NavigationBar(
                 backgroundColor: ink,
-                indicatorColor: teal.withValues(alpha: .13),
-                height: 72,
+                indicatorColor: Colors.transparent,
+                height: 76,
                 selectedIndex: tab,
                 onDestinationSelected: select,
                 destinations: items,
@@ -369,158 +382,31 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
         draft != null &&
         RegExp(r'отправ|приглас', caseSensitive: false).hasMatch(m.oneAction);
     final scheduleAction = m.steps.firstOrNull?.id == 'date';
-    return scroll(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.auto_awesome, color: Colors.white, size: 30),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'RealHero',
-                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
-                ),
-              ),
-              InkWell(onTap: () => select(3), child: const Avatar()),
-            ],
-          ),
-          gap(22),
-          modeChip(),
-          gap(18),
-          Text(
-            'Привет, ${s.profile.name}',
-            style: const TextStyle(fontSize: 20),
-          ),
-          gap(7),
-          Text(
-            m.title,
-            style: const TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              height: 1.04,
-              letterSpacing: -1,
-            ),
-          ),
-          gap(10),
-          Text(
-            '${m.materials.length} материала готовы · ${m.minutes} минут',
-            style: const TextStyle(fontSize: 17, color: Colors.white),
-          ),
-          SizedBox(height: MediaQuery.sizeOf(context).height < 700 ? 100 : 180),
-          LeiaLine(
-            m.status == MissionStatus.completed
-                ? 'Результат сохранён. Выберем следующий ход.'
-                : '${m.materials.isEmpty ? 'План' : 'Материалы'} уже подготовлены.',
-            onTap: () => openChat(),
-          ),
-          if (draft != null)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: panel.withValues(alpha: .92),
-                border: const Border(left: BorderSide(color: teal, width: 4)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                draft.text,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 16, height: 1.3),
-              ),
-            ),
-          gap(),
-          if (m.status == MissionStatus.completed)
-            ActionButton(
-              s.requiresNextMission
-                  ? 'Подготовить следующий ход'
-                  : 'Посмотреть продолжение',
-              icon: Icons.near_me,
-              onPressed: () => nextMission(),
-            )
-          else if (m.status == MissionStatus.paused ||
-              m.status == MissionStatus.active)
-            ActionButton(
-              m.status == MissionStatus.paused
-                  ? 'Продолжить миссию'
-                  : 'Вернуться к действию',
-              icon: Icons.play_arrow,
-              onPressed: () {
-                s.resumeMission();
-                setState(() => scene = 'process');
-              },
-            )
-          else if (m.status == MissionStatus.declined)
-            ActionButton(
-              'Выбрать другой ход',
-              onPressed: () => adapt(
-                'Эту миссию я отклонил. Предложи иной способ, учти причину отказа.',
-              ),
-            )
-          else
-            ActionButton(
-              scheduleAction
-                  ? 'Выбрать день'
-                  : !sendAction
-                  ? 'Перейти к действию'
-                  : s.isDemo
-                  ? 'Отправить Андрею'
-                  : 'Проверить и отправить',
-              icon: Icons.send,
-              onPressed: () => scheduleAction
-                  ? chooseDay()
-                  : sendAction
-                  ? reviewSend(draft)
-                  : begin(),
-            ),
-          Center(
-            child: TextButton(
-              onPressed: () => setState(() => scene = 'mission'),
-              child: const Text('Посмотреть подготовку'),
-            ),
-          ),
-          GlassPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Почему этот ход',
-                  style: TextStyle(color: teal, fontSize: 12),
-                ),
-                gap(6),
-                Text(m.why),
-              ],
-            ),
-          ),
-          gap(10),
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => adapt(
-                    'Уменьши текущее действие до самого доступного шага, сохрани подготовку.',
-                  ),
-                  child: const Text('Сделать легче'),
-                ),
-              ),
-              Expanded(
-                child: TextButton(
-                  onPressed: missionOptions,
-                  child: const Text('Другой момент / ход'),
-                ),
-              ),
-            ],
-          ),
-          if (m.status == MissionStatus.deferred)
-            Text(
-              'Миссия перенесена. Вернись, когда будет удобно.',
-              style: const TextStyle(color: muted),
-            ),
-        ],
-      ),
-      image: 'horizon.png',
-    );
+    final Widget action;
+    if (m.status == MissionStatus.completed) {
+      action = ActionButton(s.requiresNextMission ? 'Подготовить следующий ход' : 'Посмотреть продолжение',
+        icon: Icons.near_me, onPressed: nextMission);
+    } else if (m.status == MissionStatus.paused || m.status == MissionStatus.active) {
+      action = ActionButton(m.status == MissionStatus.paused ? 'Продолжить миссию' : 'Вернуться к действию',
+        icon: Icons.play_arrow, onPressed: () { s.resumeMission(); setState(() => scene = 'process'); });
+    } else if (m.status == MissionStatus.declined) {
+      action = ActionButton('Выбрать другой ход', onPressed: () => adapt('Эту миссию я отклонил. Предложи иной способ, учти причину отказа.'));
+    } else {
+      action = ActionButton(scheduleAction ? 'Выбрать день' : !sendAction ? 'Перейти к действию'
+        : s.isDemo ? 'Отправить Андрею' : 'Проверить и отправить', icon: Icons.near_me,
+        onPressed: () => scheduleAction ? chooseDay() : sendAction ? reviewSend(draft) : begin());
+    }
+    return TodayView(mission: m, name: s.profile.name, isDemo: s.isDemo, action: action,
+      onProfile: () => select(3), onLeia: () => openChat(),
+      onPreparation: () => setState(() => scene = 'mission'),
+      onPreview: () {
+        final preview = draft ?? m.materials.firstOrNull;
+        if (preview != null) { materialEditor(preview); }
+        else { setState(() => scene = 'mission'); }
+      },
+      onWhy: () => showText('Почему этот ход', m.why),
+      onEasier: () => adapt('Уменьши текущее действие до самого доступного шага, сохрани подготовку.'),
+      onOptions: missionOptions);
   }
 
   Widget welcomePage() => scroll(
@@ -604,117 +490,11 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
   Widget missionPage() {
     final m = s.currentMission;
     if (m == null) return welcomePage();
-    return scroll(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          heading(
-            'Миссия',
-            back: true,
-            trailing: IconButton(
-              onPressed: missionOptions,
-              icon: const Icon(Icons.more_horiz),
-            ),
-          ),
-          modeChip(),
-          gap(120),
-          const Text(
-            'Всё уже готово',
-            style: TextStyle(
-              fontSize: 33,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-            ),
-          ),
-          gap(6),
-          Text(
-            '${m.title} · ${m.minutes} минут',
-            style: const TextStyle(fontSize: 16, color: muted),
-          ),
-          gap(22),
-          for (int i = 0; i < m.steps.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 43,
-                    height: 43,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: i == m.currentStep ? teal : panel,
-                      border: Border.all(
-                        color: i == m.currentStep ? teal : muted,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${i + 1}',
-                        style: TextStyle(
-                          color: i == m.currentStep ? ink : Colors.white,
-                          fontSize: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 17),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          m.steps[i].title,
-                          style: const TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        gap(3),
-                        Text(
-                          m.steps[i].hint,
-                          style: const TextStyle(color: muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          for (final mat in m.materials) ...[
-            arrowRow(
-              mat.kind == 'questions'
-                  ? Icons.help_outline
-                  : mat.kind == 'message'
-                  ? Icons.send_outlined
-                  : Icons.attach_file,
-              mat.label,
-              () => materialEditor(mat),
-              subtitle: 'Готово · можно изменить',
-            ),
-            gap(10),
-          ],
-          LeiaLine(
-            'Я подготовила следующий ход. Проверь то, что важно тебе.',
-            onTap: () => openChat(),
-          ),
-          ActionButton(
-            m.isClosed ? 'Подготовить следующий ход' : 'Перейти к действию',
-            icon: Icons.near_me,
-            onPressed: m.isClosed ? nextMission : begin,
-          ),
-          gap(10),
-          TextButton(
-            onPressed: () => adapt(
-              'Нужен другой способ достижения моей цели вместо текущей миссии.',
-            ),
-            child: const Text('Изменить миссию'),
-          ),
-        ],
-      ),
-      image: 'workspace.png',
-      dim: true,
-    );
+    return MissionView(mission: m, isDemo: s.isDemo,
+      onBack: () => setState(() => scene = 'today'), onOptions: missionOptions,
+      onLeia: () => openChat(), onBegin: begin, onNext: nextMission,
+      onMaterial: materialEditor,
+      onChange: () => adapt('Нужен другой способ достижения моей цели вместо текущей миссии.'));
   }
 
   Widget processPage() {
@@ -747,57 +527,44 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
               m.outcome?.actionTaken == true,
         )
         .length;
+    final visibleHistory = history.skip(history.length > 6 ? history.length - 6 : 0).toList();
     return scroll(
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          heading(
-            'Твой путь',
-            trailing: IconButton(
-              onPressed: () => showText(
-                'Главы пути',
-                history.isEmpty
-                    ? 'Первая глава появится вместе с твоей целью.'
-                    : history
-                          .map((m) => '${m.chapter}\n${m.title}')
-                          .join('\n\n'),
-              ),
-              icon: const Icon(Icons.emoji_events_outlined, color: teal),
-            ),
-          ),
-          GlassPanel(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Текущая глава',
-                        style: TextStyle(color: muted, fontSize: 12),
-                      ),
-                      gap(4),
-                      Text(
-                        s.currentMission?.chapter ?? 'Начало твоего пути',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right),
-              ],
-            ),
-          ),
+          heading('Твой путь'),
+          Row(children: [
+            Expanded(child: GlassPanel(onTap: chaptersSheet,
+              child: Row(children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('Текущая глава', style: TextStyle(color: muted, fontSize: 13)),
+                  gap(5),
+                  Text(s.currentMission?.chapter ?? 'Начало твоего пути',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                ])),
+                const Icon(Icons.chevron_right, color: muted),
+              ]))),
+            const SizedBox(width: 12),
+            Semantics(label: 'Главы пути', button: true,
+              child: InkWell(onTap: chaptersSheet, borderRadius: BorderRadius.circular(40),
+                child: Container(width: 66, height: 66,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: panel.withValues(alpha: .6),
+                    border: Border.all(color: const Color(0xFF1B4652))),
+                  child: const Icon(Icons.emoji_events, size: 32, color: teal)))),
+          ]),
           gap(),
           OrbitMap(
-            completed: done.clamp(0, 6),
-            total: history.length,
+            states: List.generate(6, (i) {
+              if (i >= visibleHistory.length) return OrbitStage.future;
+              final m = visibleHistory[i];
+              if (m.status == MissionStatus.completed) {
+                return m.outcome?.actionTaken == true ? OrbitStage.done : OrbitStage.recorded;
+              }
+              return m.id == s.currentMission?.id ? OrbitStage.current : OrbitStage.recorded;
+            }),
             onNode: (i) {
-              if (i < history.length) {
-                missionHistory(history[i]);
+              if (i < visibleHistory.length) {
+                missionHistory(visibleHistory[i]);
               } else {
                 showText(
                   'Новая возможность',
@@ -818,9 +585,9 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
-                    'assets/images/horizon.png',
-                    width: 80,
-                    height: 87,
+                    'assets/images/avatar.png',
+                    width: 105,
+                    height: 105,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -830,12 +597,12 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Твоя большая цель',
+                        'Твоё направление',
                         style: TextStyle(color: muted, fontSize: 12),
                       ),
                       gap(5),
                       Text(
-                        s.goal?.title ?? 'С чего хочется начать?',
+                        displayGoalTitle(s.goal?.title),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -855,25 +622,25 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                stat('$done', 'действий'),
-                stat('${s.state.realChanges.length}', 'изменений'),
-                stat('${s.profile.xp}', 'XP героя'),
+                Expanded(child: stat('$done', 'действий')),
+                Container(width: 1, height: 38, color: const Color(0xFF31505A)),
+                Expanded(child: stat('${s.state.realChanges.length}', 'изменений')),
+                Container(width: 1, height: 38, color: const Color(0xFF31505A)),
+                Expanded(child: stat('${s.profile.xp}', 'XP героя')),
               ],
             ),
           ),
-          gap(20),
-          const SectionTitle('Что изменилось в жизни'),
-          gap(10),
-          if (s.state.realChanges.isEmpty)
-            const Text(
-              'Пока нет зафиксированных изменений. Здесь появятся факты из твоих результатов, включая то, что удалось узнать.',
-              style: TextStyle(color: muted),
-            ),
-          for (final r in s.state.realChanges.reversed)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: GlassPanel(child: Text(r.text)),
-            ),
+          gap(14),
+          Theme(data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(tilePadding: EdgeInsets.zero,
+              title: const Text('Что изменилось в жизни', style: TextStyle(fontSize: 15)),
+              children: [
+                if (s.state.realChanges.isEmpty)
+                  const Padding(padding: EdgeInsets.only(bottom: 12), child: Text('Здесь появятся реальные результаты твоих действий.',
+                    style: TextStyle(color: muted, fontSize: 13))),
+                for (final r in s.state.realChanges.reversed)
+                  Padding(padding: const EdgeInsets.only(bottom: 10), child: GlassPanel(child: Text(r.text))),
+              ])),
           gap(16),
           arrowRow(Icons.timeline, 'История миссий', historySheet),
           gap(10),
@@ -885,6 +652,18 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       ),
     );
   }
+
+  String displayGoalTitle(String? title) {
+    if (title == null || RegExp(r'^\s*(не знаю|пока не знаю)[.!?]?\s*$', caseSensitive: false).hasMatch(title)) {
+      return 'Найти своё направление';
+    }
+    return title;
+  }
+
+  Future<void> chaptersSheet() => showText('Главы пути',
+    s.state.missions.isEmpty ? 'Первая глава появится вместе с твоей целью.'
+      : s.state.missions.where((m) => m.goalId == s.goal?.id)
+        .map((m) => '${m.chapter}\n${m.title}').join('\n\n'));
 
   Widget stat(String n, String label) => Column(
     children: [

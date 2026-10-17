@@ -64,36 +64,39 @@ class ActionButton extends StatelessWidget {
     this.secondary = false,
   });
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, bounds) {
+    final scale = (bounds.maxWidth / 346).clamp(1.0, 1.35).toDouble();
+    return SizedBox(
     width: double.infinity,
     child: FilledButton(
       style: FilledButton.styleFrom(
         backgroundColor: secondary ? panel : teal,
         foregroundColor: secondary ? Colors.white : ink,
-        minimumSize: const Size(0, 54),
+        minimumSize: Size(0, 54 * scale),
         side: secondary ? const BorderSide(color: Color(0xFF20505D)) : null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14 * scale),
       ),
       onPressed: onPressed,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 22),
+            Icon(icon, size: 24 * scale),
             const SizedBox(width: 10),
           ],
           Flexible(
             child: Text(
               text,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16 * scale, fontWeight: FontWeight.w700),
             ),
           ),
         ],
       ),
     ),
   );
+  });
 }
 
 class GlassPanel extends StatelessWidget {
@@ -150,40 +153,42 @@ class Avatar extends StatelessWidget {
   );
 }
 
+class LeiaPortrait extends StatelessWidget {
+  final double size;
+  const LeiaPortrait({super.key, this.size = 46});
+  @override
+  Widget build(BuildContext context) => Container(width: size, height: size,
+    padding: const EdgeInsets.all(2),
+    decoration: BoxDecoration(shape: BoxShape.circle,
+      border: Border.all(color: teal.withValues(alpha: .5), width: 1.3)),
+    child: ClipOval(child: Image.asset('assets/images/leia-portrait.png', fit: BoxFit.cover)));
+}
+
+class LeiaNavIcon extends StatelessWidget {
+  const LeiaNavIcon({super.key});
+  @override
+  Widget build(BuildContext context) => Container(width: 38, height: 38,
+    decoration: BoxDecoration(shape: BoxShape.circle,
+      gradient: RadialGradient(colors: [violet.withValues(alpha: .22), violet.withValues(alpha: .04)]),
+      border: Border.all(color: violet.withValues(alpha: .22)),
+      boxShadow: [BoxShadow(color: violet.withValues(alpha: .12), blurRadius: 14)]),
+    child: const Icon(Icons.graphic_eq, color: violet, size: 26));
+}
+
 class LeiaLine extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
-  const LeiaLine(this.text, {super.key, required this.onTap});
+  final double scale;
+  const LeiaLine(this.text, {super.key, required this.onTap, this.scale = 1});
   @override
   Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(18),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 43,
-            height: 43,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: violet.withValues(alpha: .13),
-              border: Border.all(color: violet.withValues(alpha: .65)),
-            ),
-            child: const Icon(Icons.graphic_eq, color: violet),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 14, height: 1.35),
-            ),
-          ),
-          const Icon(Icons.chevron_right, color: muted, size: 18),
-        ],
-      ),
-    ),
-  );
+    onTap: onTap, borderRadius: BorderRadius.circular(18),
+    child: Padding(padding: EdgeInsets.symmetric(vertical: 8 * scale),
+      child: Row(children: [
+        LeiaPortrait(size: 46 * scale),
+        SizedBox(width: 12 * scale),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 14 * scale, height: 1.3))),
+      ])));
 }
 
 class SectionTitle extends StatelessWidget {
@@ -280,160 +285,116 @@ class _BadgePainter extends CustomPainter {
   bool shouldRepaint(_BadgePainter old) => old.color != color;
 }
 
+enum OrbitStage { done, current, recorded, future }
+
 class OrbitMap extends StatelessWidget {
-  final int completed;
-  final int total;
+  final List<OrbitStage> states;
   final void Function(int) onNode;
-  const OrbitMap({
-    super.key,
-    required this.completed,
-    required this.total,
-    required this.onNode,
-  });
+  const OrbitMap({super.key, required this.states, required this.onNode});
   @override
-  Widget build(BuildContext context) => AspectRatio(
-    aspectRatio: 1,
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final s = constraints.maxWidth;
-        final angles = [-2.8, -2.0, -.85, 0.15, 1.0, 2.1];
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Positioned.fill(child: CustomPaint(painter: _OrbitPainter())),
-            Container(
-              width: s * .36,
-              height: s * .36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFB7874E).withValues(alpha: .25),
-                    blurRadius: 28,
-                  ),
-                ],
-              ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/earth.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        center: Alignment(.5, -.5),
-                        colors: [
-                          Color(0xFFFFD1A0),
-                          Color(0xFF3187A2),
-                          Color(0xFF0C374F),
-                        ],
-                      ),
-                    ),
-                    child: const Icon(Icons.public, size: 90, color: muted),
-                  ),
-                ),
-              ),
-            ),
-            for (int i = 0; i < angles.length; i++)
-              Positioned(
-                left: s / 2 + math.cos(angles[i]) * s * .4 - 21,
-                top: s / 2 + math.sin(angles[i]) * s * .34 - 21,
-                child: Semantics(
-                  label:
-                      'Этап ${i + 1}: ${i < completed
-                          ? 'завершён'
-                          : i == completed
-                          ? 'текущий'
-                          : 'будущий'}',
-                  button: true,
-                  child: InkWell(
-                    onTap: () => onNode(i),
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: ink,
-                        border: Border.all(
-                          color: i < completed
-                              ? teal
-                              : i == completed
-                              ? violet
-                              : muted,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          if (i <= completed)
-                            BoxShadow(
-                              color: (i < completed ? teal : violet).withValues(
-                                alpha: .5,
-                              ),
-                              blurRadius: 16,
-                            ),
-                        ],
-                      ),
-                      child: Icon(
-                        i < completed
-                            ? Icons.check
-                            : i == completed
-                            ? Icons.near_me_outlined
-                            : Icons.circle_outlined,
-                        color: i < completed
-                            ? teal
-                            : i == completed
-                            ? violet
-                            : muted,
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
-    ),
-  );
+  Widget build(BuildContext context) => AspectRatio(aspectRatio: 1.14,
+    child: LayoutBuilder(builder: (context, bounds) {
+      final w = bounds.maxWidth, h = bounds.maxHeight;
+      final nodeSize = (w * .12).clamp(40.0, 60.0).toDouble();
+      final angles = [math.pi, -2.06, -.94, 0.0, .94, 2.06];
+      return Stack(alignment: Alignment.center, children: [
+        const Positioned.fill(child: CustomPaint(painter: _OrbitPainter())),
+        Container(width: w * .30, height: w * .30,
+          decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [
+            BoxShadow(color: const Color(0xFFFFAA67).withValues(alpha: .30), blurRadius: w * .06, spreadRadius: 4),
+            BoxShadow(color: const Color(0xFFEA8C4A).withValues(alpha: .16), blurRadius: w * .12),
+          ]),
+          child: ClipOval(child: Stack(fit: StackFit.expand, children: [
+            ColorFiltered(colorFilter: const ColorFilter.matrix([
+              1.03, .05, 0, 0, 0, .03, .79, 0, 0, 0, 0, .03, .61, 0, 0, 0, 0, 0, 1, 0,
+            ]), child: Image.asset('assets/images/earth.png', fit: BoxFit.cover)),
+            const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+              begin: Alignment.bottomLeft, end: Alignment.topRight,
+              colors: [Color(0xD903171F), Color(0x2003171F), Color(0x40FFB46D)],
+              stops: [0, .57, 1]))),
+            DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFFFCA8C).withValues(alpha: .7), width: 1.3))),
+          ]))),
+        Positioned(left: w * .59, top: h * .32,
+          child: IgnorePointer(child: Container(width: w * .09, height: w * .09,
+            decoration: const BoxDecoration(shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [Color(0xCCFFE9BC), Color(0x77FFB865), Color(0x00FFB865)]))))),
+        for (var i = 0; i < angles.length; i++)
+          Positioned(left: w / 2 + math.cos(angles[i]) * w * .42 - nodeSize / 2,
+            top: h / 2 + math.sin(angles[i]) * h * .37 - nodeSize / 2,
+            child: _OrbitNode(index: i, state: i < states.length ? states[i] : OrbitStage.future,
+              size: nodeSize, onTap: () => onNode(i))),
+      ]);
+    }));
+}
+
+class _OrbitNode extends StatelessWidget {
+  final int index;
+  final OrbitStage state;
+  final double size;
+  final VoidCallback onTap;
+  const _OrbitNode({required this.index, required this.state, required this.size, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final color = state == OrbitStage.done ? teal : state == OrbitStage.current ? violet : muted;
+    final active = state == OrbitStage.done || state == OrbitStage.current;
+    final label = switch (state) { OrbitStage.done => 'действие выполнено',
+      OrbitStage.current => 'текущий', OrbitStage.recorded => 'результат записан', OrbitStage.future => 'будущий' };
+    return Semantics(label: 'Этап ${index + 1}: $label', button: true,
+      child: Tooltip(message: 'Этап ${index + 1}: $label',
+        child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(size),
+          child: Container(width: size, height: size,
+            decoration: BoxDecoration(shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [active ? color.withValues(alpha: .18) : panel, ink]),
+              border: Border.all(color: color, width: active ? 2.5 : 1.6),
+              boxShadow: [if (active) ...[
+                BoxShadow(color: color.withValues(alpha: .55), blurRadius: 11, spreadRadius: 1),
+                BoxShadow(color: color.withValues(alpha: .16), blurRadius: 22, spreadRadius: 4),
+              ]]),
+            child: state == OrbitStage.future ? null : Icon(
+              state == OrbitStage.done ? Icons.check : state == OrbitStage.current ? Icons.circle : Icons.remove,
+              color: state == OrbitStage.done ? Colors.white : color,
+              size: state == OrbitStage.current ? size * .22 : size * .52)))));
+  }
 }
 
 class _OrbitPainter extends CustomPainter {
+  const _OrbitPainter();
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    for (int i = 0; i < 4; i++) {
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate((i - 1) * .22);
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset.zero,
-          width: size.width * (.6 + i * .1),
-          height: size.height * (.54 + i * .08),
-        ),
-        Paint()
-          ..color = (i == 3 ? const Color(0xFFDAAE64) : const Color(0xFF237B92))
-              .withValues(alpha: i == 3 ? 0.55 : 0.35)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = i == 3 ? 1.2 : .8,
-      );
+    final c = size.center(Offset.zero);
+    final random = math.Random(41);
+    for (var i = 0; i < 140; i++) {
+      canvas.drawCircle(Offset(random.nextDouble() * size.width, random.nextDouble() * size.height),
+        random.nextDouble() * .7 + .15,
+        Paint()..color = const Color(0xFF8EACBA).withValues(alpha: random.nextDouble() * .3));
+    }
+    canvas.drawCircle(c, size.width * .32, Paint()
+      ..shader = const RadialGradient(colors: [Color(0x221B5868), Color(0x001B5868)])
+        .createShader(Rect.fromCircle(center: c, radius: size.width * .32)));
+    for (var i = 0; i < 5; i++) {
+      canvas.save(); canvas.translate(c.dx, c.dy); canvas.rotate((i - 2) * .13);
+      canvas.drawOval(Rect.fromCenter(center: Offset.zero,
+        width: size.width * (.42 + i * .12), height: size.height * (.36 + i * .13)),
+        Paint()..color = const Color(0xFF24728E).withValues(alpha: .14 + i * .025)
+          ..style = PaintingStyle.stroke..strokeWidth = .7);
       canvas.restore();
     }
-    final random = math.Random(41);
-    for (int i = 0; i < 90; i++) {
-      canvas.drawCircle(
-        Offset(
-          random.nextDouble() * size.width,
-          random.nextDouble() * size.height,
-        ),
-        random.nextDouble() * .8 + .2,
-        Paint()..color = muted.withValues(alpha: random.nextDouble() * .5),
-      );
+    final orbit = Rect.fromCenter(center: c, width: size.width * .84, height: size.height * .74);
+    final shader = const SweepGradient(colors: [Color(0xFF917C5E), Color(0xFFEEC471),
+      Color(0xFFB4A36D), Color(0xFFCC9A54), Color(0xFFB56ECD), Color(0xFF917C5E)])
+      .createShader(orbit);
+    canvas.drawOval(orbit, Paint()..shader = shader..style = PaintingStyle.stroke
+      ..strokeWidth = 5..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    canvas.drawOval(orbit, Paint()..shader = shader..style = PaintingStyle.stroke..strokeWidth = 1.35);
+    for (final angle in [-math.pi / 2, math.pi / 2]) {
+      final p = Offset(c.dx + math.cos(angle) * orbit.width / 2, c.dy + math.sin(angle) * orbit.height / 2);
+      canvas.drawCircle(p, 4, Paint()..color = const Color(0x55FFD38A)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+      canvas.drawCircle(p, 1.8, Paint()..color = const Color(0xFFFFD38A));
     }
   }
-
   @override
-  bool shouldRepaint(_OrbitPainter old) => false;
+  bool shouldRepaint(_OrbitPainter oldDelegate) => false;
 }
 
 Widget gap([double h = 16]) => SizedBox(height: h);

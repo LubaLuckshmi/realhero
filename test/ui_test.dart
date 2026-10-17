@@ -111,6 +111,71 @@ void main() {
     TestWidgetsFlutterBinding.instance.platformDispatcher.clearAllTestValues();
   });
 
+  for (final size in [const Size(390, 844), const Size(900, 1200), const Size(1200, 800)]) {
+    testWidgets('approved Today, Mission and Path composition at $size', (tester) async {
+      final store = await pumpApp(tester, size: size, demo: true);
+      await screenshot(tester, 'reference_today_${size.width.toInt()}');
+      expect(tester.getRect(find.byKey(const ValueKey('today-preparation'))).top,
+        greaterThan(tester.getRect(find.byKey(const ValueKey('today-title'))).bottom));
+      await tapText(tester, 'Посмотреть подготовку');
+      await screenshot(tester, 'reference_mission_${size.width.toInt()}');
+      final photo = tester.getRect(find.byKey(const ValueKey('mission-header-photo')));
+      expect(photo.height, lessThan(size.height * .4));
+      await tapText(tester, 'Путь');
+      await screenshot(tester, 'reference_path_${size.width.toInt()}');
+      expect(store.profile.xp, 0);
+      expect(store.profile.completedCount, 0);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('personal mission without a message shows actual preparation and preserves connection', (tester) async {
+    final disk = UiMemoryStorage();
+    final store = await pumpApp(tester, size: const Size(900, 1200), disk: disk);
+    store.configureServer('https://example.test', 'local-fixture-access-token-not-a-secret');
+    store.setGoal('не знаю');
+    store.acceptPlan({
+      'reply': 'Первый шаг готов.', 'needsClarification': false,
+      'mission': {
+        'title': 'Минимальная практика внимательности', 'minutes': 5,
+        'why': 'Для короткого шага без общения.', 'oneAction': 'Рассмотри один предмет рядом.',
+        'chapter': 'Начало', 'lightAction': 'Посмотри одну минуту.',
+        'steps': [
+          {'id': 'find', 'title': 'Найдите удобное место и предмет рядом.', 'hint': 'Например, ручка, кружка или лист бумаги.'},
+          {'id': 'observe', 'title': 'Смотрите на предмет внимательно, замечая детали.', 'hint': 'Цвет, форма, текстура.'},
+          {'id': 'notice', 'title': 'Обратите внимание на мысли и ощущения, которые возникают.', 'hint': 'Без оценки.'},
+        ],
+        'materials': [{'id': 'practice', 'kind': 'draft', 'label': 'Инструкция для практики внимательности',
+          'text': 'Посмотри на предмет рядом. Заметь его цвет, форму и текстуру. Можно остановиться в любой момент.'}],
+      },
+    });
+    await tester.pumpAndSettle();
+    await screenshot(tester, 'personal_today_900');
+    expect(find.text('1 материал готов · 5 минут'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('today-preparation')));
+    await tester.pumpAndSettle();
+    expect(find.text('Подготовленный материал'), findsOneWidget);
+    tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Посмотреть подготовку');
+    await screenshot(tester, 'personal_mission_900');
+    await tapText(tester, 'Перейти к действию');
+    await screenshot(tester, 'personal_process_900');
+    expect(tester.takeException(), isNull);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tapText(tester, 'Путь');
+    expect(find.text('Найти своё направление'), findsOneWidget);
+    await screenshot(tester, 'personal_path_900');
+    await store.flush();
+    final reopened = RealHeroStore(storage: disk);
+    await reopened.load();
+    expect(reopened.settings.url, 'https://example.test');
+    expect(reopened.settings.accessToken, 'local-fixture-access-token-not-a-secret');
+    expect(reopened.currentMission!.title, 'Минимальная практика внимательности');
+    expect(reopened.profile.xp, 0);
+  });
+
   testWidgets('context stays folded and uncertainty continues the existing idea', (tester) async {
     final store = await pumpApp(tester);
     store.setGoal('Хочу свою коллекцию ёлочных игрушек');
@@ -184,7 +249,7 @@ void main() {
       await screenshot(tester, '01_today');
 
       await tapText(tester, 'Посмотреть подготовку');
-      expect(find.text('Всё уже готово'), findsOneWidget);
+      expect(find.text('Демо уже готово'), findsOneWidget);
       await tester.ensureVisible(find.text('Миссия').first);
       await tester.pumpAndSettle();
       await screenshot(tester, '02_mission');
@@ -407,7 +472,7 @@ void main() {
       await tapText(tester, 'Посмотреть подготовку');
       await tapText(tester, 'Перейти к действию');
       expect(find.byType(ProcessView), findsOneWidget);
-      if (size.width < 760) {
+      if (size.width < 900 || size.width <= size.height) {
         expect(find.byType(NavigationBar), findsNothing);
       } else {
         expect(find.byType(NavigationRail), findsOneWidget);
@@ -520,17 +585,18 @@ void main() {
         expect(tester.takeException(), isNull);
         tester.state<NavigatorState>(find.byType(Navigator).last).pop();
         await tester.pumpAndSettle();
-        if (size.width < 760) {
+        if (size.width < 900 || size.width <= size.height) {
           await tester.binding.handlePopRoute();
           await tester.pumpAndSettle();
         }
         await tapText(tester, 'Путь');
         await tapText(tester, 'Профиль');
-        if (size.width >= 760) {
+        if (size.width >= 900 && size.width > size.height) {
           expect(find.byType(NavigationRail), findsOneWidget);
           await screenshot(tester, '07_tablet_profile');
         } else {
           expect(find.byType(NavigationBar), findsOneWidget);
+          if (size.width >= 760) await screenshot(tester, '07_tablet_profile');
         }
         await tapText(tester, 'Лея');
         expect(find.text('Демо Леи'), findsOneWidget);
