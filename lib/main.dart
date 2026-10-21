@@ -460,7 +460,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
           ActionButton(item.$2, secondary: true, onPressed: () {
             s.completeMission(missionId: mission.id, outcome: item.$1,
               facts: note.text.trim().isEmpty ? item.$2 : note.text.trim(), actionTaken: true,
-              actualMinutes: mission.startedAt == null ? 0 : DateTime.now().toUtc().difference(mission.startedAt!).inMinutes.clamp(0, 1440));
+              actualMinutes: 0, timeReported: false, difficultyReported: false);
             Navigator.pop(ctx); nextMission();
           }), gap(12),
         ],

@@ -523,6 +523,8 @@ class RealHeroStore extends ChangeNotifier {
     required String facts,
     int? actualMinutes,
     int difficulty = 2,
+    bool timeReported = true,
+    bool difficultyReported = true,
     String observations = '',
     bool actionTaken = true,
   }) {
@@ -545,6 +547,8 @@ class RealHeroStore extends ChangeNotifier {
       kind: outcome,
       facts: facts.trim(),
       actualMinutes: minutes,
+      timeReported: timeReported,
+      difficultyReported: difficultyReported,
       difficulty: difficulty.clamp(1, 5),
       observations: observations.trim(),
       xpEarned: xp,

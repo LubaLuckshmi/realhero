@@ -116,6 +116,8 @@ class OutcomeRecord {
   final String facts;
   final int actualMinutes;
   final int difficulty;
+  final bool timeReported;
+  final bool difficultyReported;
   final String observations;
   String learned;
   String goalImpact;
@@ -128,6 +130,8 @@ class OutcomeRecord {
     required this.facts,
     required this.actualMinutes,
     required this.difficulty,
+    this.timeReported = true,
+    this.difficultyReported = true,
     this.observations = '',
     this.learned = '',
     this.goalImpact = '',
@@ -143,7 +147,7 @@ class OutcomeRecord {
       'Результат: ${outcomeLabel(kind)}\n$facts\n\n'
       'Наблюдение: $learned\nВлияние на цель: $goalImpact\n'
       'Следующий ход: $nextDirection\n\n'
-      'Время: $actualMinutes мин · Сложность: $difficulty из 5\n'
+      'Время: ${timeReported ? '$actualMinutes мин' : 'не отмечено'} · Сложность: ${difficultyReported ? '$difficulty из 5' : 'не отмечена'}\n'
       'Игровой опыт: +$xpEarned XP';
   factory OutcomeRecord.fromJson(dynamic value) {
     final j = jsonObject(value);
@@ -151,6 +155,8 @@ class OutcomeRecord {
       kind: jsonEnum(OutcomeKind.values, j['kind'], OutcomeKind.unknown),
       facts: jsonString(j['facts']),
       actualMinutes: jsonInt(j['actualMinutes']),
+      timeReported: j['timeReported'] != false,
+      difficultyReported: j['difficultyReported'] != false,
       difficulty: jsonInt(j['difficulty'], 2).clamp(1, 5),
       observations: jsonString(j['observations']),
       learned: jsonString(j['learned']),
@@ -165,6 +171,8 @@ class OutcomeRecord {
     'kind': kind.name,
     'facts': facts,
     'actualMinutes': actualMinutes,
+    'timeReported': timeReported,
+    'difficultyReported': difficultyReported,
     'difficulty': difficulty,
     'observations': observations,
     'learned': learned,

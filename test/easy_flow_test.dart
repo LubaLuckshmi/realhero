@@ -69,6 +69,8 @@ void main() {
     await store.flush(); final restored = RealHeroStore(storage:disk); await restored.load();
     expect(restored.currentMission!.outcome!.facts, 'Нравится звёздочка');
     expect(restored.state.quickReplies, contains('Синее стекло'));
+    expect(restored.currentMission!.outcome!.timeReported, false);
+    expect(restored.currentMission!.outcome!.difficultyReported, false);
     expect(restored.settings.accessToken,'fixture-token');
     expect(tester.takeException(),isNull);
   });
