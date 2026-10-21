@@ -424,7 +424,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       else if (error != null) ...[
         Text(error!), gap(16),
         ActionButton('Повторить', onPressed: () => sendChat(message: 'Продолжи с последнего ответа. Подготовь один лёгкий шаг или один выбор.', operation: 'mission')),
-        TextButton(onPressed: settings, child: const Text('Подключение')),
+        TextButton(onPressed: settings, child: const Text('Проверить подключение')),
       ] else ...[
         Text(last?.text ?? 'Что сейчас тебе ближе?', style: const TextStyle(fontSize: 23, height: 1.3)),
         gap(24),
@@ -449,27 +449,26 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
 
   Future<void> quickResult() async {
     final mission = s.currentMission!;
-    final note = TextEditingController();
+    var note = ''; 
     await showModalBottomSheet(context: context, isScrollControlled: true, useSafeArea: true,
       showDragHandle: true, builder: (ctx) => Padding(
       padding: EdgeInsets.fromLTRB(22, 0, 22, MediaQuery.viewInsetsOf(ctx).bottom + 24),
       child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const Text('Как прошло?', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)), gap(16),
-        TextField(controller: note, maxLines: 3, minLines: 1, decoration: const InputDecoration(hintText: 'Можно добавить пару слов')), gap(16),
+        TextField(onChanged: (value) => note = value, maxLines: 3, minLines: 1, decoration: const InputDecoration(hintText: 'Можно добавить пару слов')), gap(16),
         for (final item in [(OutcomeKind.positive, 'Сделано, хочу дальше'), (OutcomeKind.partial, 'Попытка была, пока неясно')]) ...[
           ActionButton(item.$2, secondary: true, onPressed: () {
             s.completeMission(missionId: mission.id, outcome: item.$1,
-              facts: note.text.trim().isEmpty ? item.$2 : note.text.trim(), actionTaken: true,
+              facts: note.trim().isEmpty ? item.$2 : note.trim(), actionTaken: true,
               actualMinutes: 0, timeReported: false, difficultyReported: false);
             Navigator.pop(ctx); nextMission();
           }), gap(12),
         ],
         TextButton(onPressed: () {
-          s.declineMission(note.text.trim().isEmpty ? 'Этот шаг не подходит' : note.text.trim());
+          s.declineMission(note.trim().isEmpty ? 'Этот шаг не подходит' : note.trim());
           Navigator.pop(ctx); setState(() => scene = 'today');
         }, child: const Text('Не подходит — без попытки')),
       ]))));
-    note.dispose();
   }
 
   Widget welcomePage() => scroll(
