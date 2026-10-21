@@ -35,21 +35,21 @@ class DiscoveryView extends StatelessWidget {
               gap(28),
               for (final answer in DiscoveryAnswer.values) ...[
                 ActionButton(discoveryAnswerLabel(answer), secondary: true,
-                  onPressed: () => store.answerDiscovery(answer)),
+                  onPressed: () { store.answerDiscovery(answer); if (state.phase == DiscoveryPhase.review) onPrepare(); }),
                 gap(12),
               ],
               const Text('Можно отвечать «не знаю». Это тоже ответ.', style: TextStyle(color: muted, fontSize: 12)),
             ] else if (phase == DiscoveryPhase.direction) ...[
-              _question('Что сейчас чуть ближе?'),
+              _question('Что хочется попробовать?'),
               gap(12),
               const Text('Можно пока не выбирать.', style: TextStyle(color: muted)),
               gap(24),
               Wrap(spacing: 10, runSpacing: 12, children: [
                 for (final direction in DiscoveryState.directions)
-                  ActionChip(label: Text(direction), onPressed: () => store.chooseDiscoveryDirection(direction)),
+                  ActionChip(label: Text(switch (direction) { 'Творчество' => 'Что-нибудь создать', 'Учёба' => 'Узнать что-то новое', 'Работа и дела' => 'Разобраться с делом', 'Общение' => 'С кем-то сблизиться', 'Личный проект' => 'Попробовать свою идею', _ => 'Отдохнуть' }), onPressed: () { store.chooseDiscoveryDirection(direction); onPrepare(); }),
               ]),
               gap(24),
-              ActionButton('Пока не знаю', secondary: true, onPressed: () => store.chooseDiscoveryDirection(null)),
+              ActionButton('Пока не знаю', secondary: true, onPressed: () { store.chooseDiscoveryDirection(null); onPrepare(); }),
             ] else if (phase == DiscoveryPhase.review) ...[
               _question('Начнём с маленькой пробы'),
               gap(16),

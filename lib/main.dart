@@ -350,6 +350,8 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
 
   Widget todayPage() {
     final m = s.currentMission;
+    if (!s.isDemo && (busy || error != null || s.state.needsClarification)) return easyQuestionPage();
+    if (!s.isDemo && m?.status == MissionStatus.declined) return declinedPage();
     if (m == null) {
       if (s.goal != null && !s.isDemo) {
         return scroll(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -391,6 +393,8 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
         icon: Icons.play_arrow, onPressed: () { s.resumeMission(); setState(() => scene = 'process'); });
     } else if (m.status == MissionStatus.declined) {
       action = ActionButton('Выбрать другой ход', onPressed: () => adapt('Эту миссию я отклонил. Предложи иной способ, учти причину отказа.'));
+    } else if (!s.isDemo && m.steps.length == 1 && !sendAction && !scheduleAction) {
+      action = ActionButton('Готово', icon: Icons.check, onPressed: quickResult);
     } else {
       action = ActionButton(scheduleAction ? 'Выбрать день' : !sendAction ? 'Перейти к действию'
         : s.isDemo ? 'Отправить Андрею' : 'Проверить и отправить', icon: Icons.near_me,
@@ -405,8 +409,67 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
         else { setState(() => scene = 'mission'); }
       },
       onWhy: () => showText('Почему этот ход', m.why),
-      onEasier: () => adapt('Уменьши текущее действие до самого доступного шага, сохрани подготовку.'),
+      onEasier: () => adapt('Подготовь более простой способ двигаться к моей исходной идее. Возьми подготовку на себя, оставь одно действие. Не сокращай только минуты и не подменяй цель упражнением на внимательность.'),
       onOptions: missionOptions);
+  }
+
+  Widget easyQuestionPage() {
+    final replies = s.state.quickReplies;
+    final last = s.state.chat.where((c) => c.role == 'assistant').lastOrNull;
+    return scroll(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      heading('Сегодня'), gap(28),
+      LeiaLine(busy ? 'Готовлю один шаг…' : 'Давай найдём, что тебе интересно.', onTap: () => openChat()),
+      gap(20),
+      if (busy) const Center(child: CircularProgressIndicator())
+      else if (error != null) ...[
+        Text(error!), gap(16),
+        ActionButton('Повторить', onPressed: () => sendChat(message: 'Продолжи с последнего ответа. Подготовь один лёгкий шаг или один выбор.', operation: 'mission')),
+        TextButton(onPressed: settings, child: const Text('Подключение')),
+      ] else ...[
+        Text(last?.text ?? 'Что сейчас тебе ближе?', style: const TextStyle(fontSize: 23, height: 1.3)),
+        gap(24),
+        for (final reply in replies) ...[
+          ActionButton(reply, secondary: true, onPressed: () => sendChat(message: reply)), gap(12),
+        ],
+        if (!replies.any((r) => r.toLowerCase().contains('ничего')))
+          TextButton(onPressed: () => sendChat(message: 'Пока ничего не откликается. Предложи другие два конкретных варианта, без повторного опроса.'), child: const Text('Пока ничего не откликается')),
+        TextButton(onPressed: () => openChat(), child: const Text('Написать своими словами')),
+      ],
+      gap(24), TextButton(onPressed: newGoal, child: const Text('Изменить идею')),
+    ]));
+  }
+
+  Widget declinedPage() => scroll(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    heading('Сегодня'), gap(36),
+    const Text('Этот шаг не подошёл', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
+    gap(14), const Text('Выберем другой способ приблизиться к твоей идее.'), gap(24),
+    ActionButton('Предложить другой шаг', onPressed: () => adapt('Предыдущая миссия не подошла. Учти причину отказа. Предложи другой конкретный способ к исходной идее; если направление неясно, предложи выбор из двух вариантов.')),
+    TextButton(onPressed: newGoal, child: const Text('Изменить идею')),
+  ]));
+
+  Future<void> quickResult() async {
+    final mission = s.currentMission!;
+    final note = TextEditingController();
+    await showModalBottomSheet(context: context, isScrollControlled: true, useSafeArea: true,
+      showDragHandle: true, builder: (ctx) => Padding(
+      padding: EdgeInsets.fromLTRB(22, 0, 22, MediaQuery.viewInsetsOf(ctx).bottom + 24),
+      child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Как прошло?', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700)), gap(16),
+        TextField(controller: note, maxLines: 3, minLines: 1, decoration: const InputDecoration(hintText: 'Можно добавить пару слов')), gap(16),
+        for (final item in [(OutcomeKind.positive, 'Сделано, хочу дальше'), (OutcomeKind.partial, 'Попытка была, пока неясно')]) ...[
+          ActionButton(item.$2, secondary: true, onPressed: () {
+            s.completeMission(missionId: mission.id, outcome: item.$1,
+              facts: note.text.trim().isEmpty ? item.$2 : note.text.trim(), actionTaken: true,
+              actualMinutes: mission.startedAt == null ? 0 : DateTime.now().toUtc().difference(mission.startedAt!).inMinutes.clamp(0, 1440));
+            Navigator.pop(ctx); nextMission();
+          }), gap(12),
+        ],
+        TextButton(onPressed: () {
+          s.declineMission(note.text.trim().isEmpty ? 'Этот шаг не подходит' : note.text.trim());
+          Navigator.pop(ctx); setState(() => scene = 'today');
+        }, child: const Text('Не подходит — без попытки')),
+      ]))));
+    note.dispose();
   }
 
   Widget welcomePage() => scroll(
@@ -1030,8 +1093,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
             for (final reply in s.state.quickReplies)
               ActionChip(label: Text(reply, maxLines: 2, overflow: TextOverflow.ellipsis), onPressed: () {
                 if (reply.toLowerCase().contains('не знаю')) {
-                  s.appendChat('user', reply);
-                  s.startDiscovery(keepGoal: true);
+                  unawaited(sendChat(message: reply));
                 } else {
                   unawaited(sendChat(message: reply));
                 }
@@ -1075,7 +1137,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
     final text = (message ?? chatInput.text).trim();
     if (text.isEmpty || busy) return;
     if (!s.isDemo && (s.currentMission == null || s.currentMission!.isClosed) &&
-        RegExp(r'^(?:я\s+)?(?:пока\s+)?не\s+знаю(?:[\s,.!…].*)?$', caseSensitive: false).hasMatch(text)) {
+        !s.state.needsClarification && RegExp(r'^(?:я\s+)?(?:пока\s+)?не\s+знаю(?:[\s,.!…].*)?$', caseSensitive: false).hasMatch(text)) {
       s.appendChat('user', text);
       chatInput.clear();
       s.startDiscovery(keepGoal: true);
@@ -1096,6 +1158,8 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
     setState(() {
       busy = true;
       error = null;
+      tab = 0;
+      scene = 'today';
     });
     try {
       final response = await leia.respond(
@@ -1107,9 +1171,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       await s.flush();
       if (mounted) {
         setState(() => busy = false);
-        if (response['mission'] != null) {
-          notice('Лея подготовила миссию. Открой её, когда будет удобно.');
-        }
+        setState(() { tab = 0; scene = 'today'; });
       }
     } catch (e) {
       if (mounted) {
@@ -1768,8 +1830,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
     final text = s.state.discovery.goalText.trim();
     if (text.isEmpty) return;
     s.setGoal(text);
-    openChat();
-    unawaited(sendChat(message: text, operation: 'onboard'));
+    unawaited(sendChat(message: '$text\n\nПомоги начать с одного лёгкого действия. Если для этого нужно выбрать направление, предложи два конкретных варианта и «Пока ничего».', displayMessage: text, operation: 'onboard'));
   }
 
   void prepareDiscovery() {

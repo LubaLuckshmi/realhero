@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'domain.dart';
+import 'easy_flow.dart';
 import 'widgets.dart';
 
 double sceneScale(BoxConstraints bounds) =>
@@ -77,10 +78,11 @@ class TodayView extends StatelessWidget {
                   style: TextStyle(fontSize: 34 * scale, height: 1.06,
                     letterSpacing: -.7, fontWeight: FontWeight.w800)),
                 SizedBox(height: 12 * scale),
-                Text('${materialCount(mission.materials.length)} · ${mission.minutes} минут',
+                Text('${minuteLabel(mission.minutes)}${mission.steps.length == 1 ? ' · один шаг' : ''}',
                   style: TextStyle(fontSize: 16 * scale, color: const Color(0xFFE2EAED))),
               ],
             )),
+            if (!isDemo) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(mission.oneAction, style: TextStyle(fontSize: 20 * scale, fontWeight: FontWeight.w600))),
             LeiaLine(ready, onTap: onLeia, scale: scale),
             Material(color: panel.withValues(alpha: .94), borderRadius: BorderRadius.circular(12),
               child: InkWell(onTap: onPreview, borderRadius: BorderRadius.circular(12),
@@ -89,7 +91,7 @@ class TodayView extends StatelessWidget {
                   decoration: BoxDecoration(border: Border(left: BorderSide(color: teal, width: 4 * scale)),
                     borderRadius: BorderRadius.circular(12)),
                   child: Text(preview?.text ?? mission.oneAction,
-                    maxLines: 3, overflow: TextOverflow.ellipsis,
+                    maxLines: isDemo ? 3 : null, overflow: isDemo ? TextOverflow.ellipsis : null,
                     style: TextStyle(fontSize: 15 * scale, height: 1.35))))),
             SizedBox(height: 16 * scale),
             action,
@@ -150,7 +152,7 @@ class MissionView extends StatelessWidget {
             Text(isDemo ? 'Демо уже готово' : 'Всё уже готово',
               style: TextStyle(fontSize: 34 * scale, fontWeight: FontWeight.w800, height: 1.08, letterSpacing: -.6)),
             SizedBox(height: 7 * scale),
-            Text('${mission.title} · ${mission.minutes} минут',
+            Text('${mission.title} · ${minuteLabel(mission.minutes)}',
               style: TextStyle(fontSize: 16 * scale, color: muted, height: 1.25)),
             if (isDemo) Padding(padding: const EdgeInsets.only(top: 6),
               child: Text('ДЕМО · пример из макета', style: TextStyle(color: violet, fontSize: 10 * scale))),

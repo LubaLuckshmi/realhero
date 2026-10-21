@@ -167,7 +167,7 @@ void main() {
     });
     await tester.pumpAndSettle();
     await screenshot(tester, 'personal_today_900');
-    expect(find.text('1 материал готов · 5 минут'), findsOneWidget);
+    expect(find.text('5 минут'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('today-preparation')));
     await tester.pumpAndSettle();
     expect(find.text('Подготовленный материал'), findsOneWidget);
@@ -212,8 +212,8 @@ void main() {
     expect(find.text('Идея коллекции уже есть; детали пока открыты.'), findsOneWidget);
     await tapText(tester, 'Контекст Леи');
     await tapText(tester, 'Не знаю');
-    expect(find.text('Сейчас есть силы на маленький шаг?'), findsOneWidget);
-    expect(store.state.discovery.existingGoalId, goalId);
+    expect(find.text('Сейчас есть силы на маленький шаг?'), findsNothing);
+    expect(store.state.discovery.active, false);
     expect(store.goal!.id, goalId);
     expect(store.state.chat.last.text, 'Не знаю');
     expect(store.profile.xp, 0);
@@ -236,17 +236,20 @@ void main() {
       expect(reopened.state.discovery.answers['energy'], DiscoveryAnswer.no);
       await tapText(tester, 'Не знаю');
       await tapText(tester, 'Нет');
-      expect(find.text('Что сейчас чуть ближе?'), findsOneWidget);
+      expect(find.text('Что хочется попробовать?'), findsOneWidget);
       await tapText(tester, 'Пока не знаю');
-      expect(find.text('Подготовить мой шаг'), findsOneWidget);
-      expect(reopened.goal, isNull);
-      expect(reopened.state.chat, isEmpty);
+      expect(find.text('Подготовить мой шаг'), findsNothing);
+      expect(reopened.goal, isNotNull);
+      expect(reopened.state.chat, isNotEmpty);
       expect(reopened.profile.xp, 0);
-      await screenshot(tester, 'discovery_review_${size.width.toInt()}');
-      await tapText(tester, 'Не сейчас');
-      expect(find.text('Продолжить короткое знакомство'), findsOneWidget);
-      expect(reopened.state.discovery.paused, true);
-      expect(reopened.goal, isNull);
+      expect(reopened.state.discovery.active, false);
+      expect(find.text('Повторить'), findsOneWidget);
+      await screenshot(tester, 'discovery_connection_${size.width.toInt()}');
+      await reopened.flush();
+      final restored = RealHeroStore(storage: disk);
+      await restored.load();
+      expect(restored.goal!.context, contains('С направлением пока не определено.'));
+
     });
   }
 

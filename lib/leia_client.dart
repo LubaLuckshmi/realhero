@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'domain.dart';
+import 'easy_flow.dart';
 
 class LeiaException implements Exception {
   final String message;
@@ -90,7 +91,7 @@ class LeiaClient {
       'version': 1,
       'operation': operation,
       'message': message,
-      'context': state.toJson(includeSettings: false),
+      'context': {...state.toJson(includeSettings: false), 'interaction': easyInteraction},
     });
     try {
       final response =
