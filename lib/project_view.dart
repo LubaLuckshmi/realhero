@@ -72,9 +72,9 @@ class ProjectView extends StatelessWidget {
           var title=''; await showModalBottomSheet<void>(context:context,isScrollControlled:true,builder:(sheet)=>Padding(padding:EdgeInsets.fromLTRB(20,24,20,MediaQuery.viewInsetsOf(sheet).bottom+24),child:Column(mainAxisSize:MainAxisSize.min,children:[
             TextField(decoration:const InputDecoration(labelText:'Новый этап'),onChanged:(v)=>title=v),const SizedBox(height:16),ActionButton('Добавить',onPressed:(){if(title.trim().isEmpty)return;store.addStage(title.trim(),'');Navigator.pop(sheet);})])));
         },icon:const Icon(Icons.add,color:teal))]),
-      if(p.roadmap.isEmpty) ...[const Text('Собери этапы с Леей или добавь свой. Отмечай изменения по мере работы.',style:TextStyle(color:muted)),
+      if(p.roadmap.isEmpty && p.proposedRoadmap.isEmpty) ...[const Text('Собери этапы с Леей или добавь свой. Отмечай изменения по мере работы.',style:TextStyle(color:muted)),
         TextButton(onPressed:onRoadmap,child:const Text('Подготовить карту с Леей'))]
-      else ...[Text('$count из ${p.roadmap.length} этапов отмечено тобой',style:const TextStyle(color:muted,fontSize:12)),
+      if(p.roadmap.isNotEmpty) ...[Text('$count из ${p.roadmap.length} этапов отмечено тобой',style:const TextStyle(color:muted,fontSize:12)),
         for(final stage in p.roadmap) Card(color:panel,child:ListTile(
           leading:Checkbox(value:stage.done,onChanged:(_)=>store.toggleStage(stage)),
           title:Text(stage.title,style:TextStyle(decoration:stage.done?TextDecoration.lineThrough:null)),
@@ -85,7 +85,7 @@ class ProjectView extends StatelessWidget {
         const Text('Предложение Леи',style:TextStyle(color:teal,fontWeight:FontWeight.bold)),
         for(final stage in p.proposedRoadmap) Padding(padding:const EdgeInsets.only(top:10),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(stage.title,style:const TextStyle(fontWeight:FontWeight.w600)),if(stage.detail.isNotEmpty)Text(stage.detail,style:const TextStyle(color:muted,fontSize:13))])),
         const SizedBox(height:12),ActionButton(p.roadmap.isEmpty?'Принять карту':'Заменить карту этим вариантом',onPressed:store.acceptRoadmap),
-        TextButton(onPressed:store.dismissRoadmap,child:const Text('Оставить текущую карту')),
+        TextButton(onPressed:store.dismissRoadmap,child:Text(p.roadmap.isEmpty?'Пока не принимать':'Оставить текущую карту')),
       ]))],
       const SizedBox(height:24),const Text('Материалы и решения',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold)),
       Wrap(spacing:8,children:[TextButton.icon(onPressed:()=>edit(context),icon:const Icon(Icons.add,size:18),label:const Text('Заметка')),
