@@ -160,10 +160,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
               ),
               gap(),
               SelectableText(text),
-          for(final source in message.sources) ProjectSourceCard(source:source,saved:widget.store?.sourceSaved(source)??false,onSave:()=>widget.store?.saveProjectSource(source)),
-          if(widget.store!=null && message.role=='assistant' && message.sources.isEmpty) TextButton.icon(
-            onPressed:()=>widget.store!.addProjectItem('Из разговора с Леей',message.text,kind:'draft'),
-            icon:const Icon(Icons.bookmark_add_outlined,size:16),label:const Text('Сохранить в проект')),
+
               gap(),
               ActionButton('Понятно', onPressed: () => Navigator.pop(ctx)),
             ],
@@ -355,8 +352,8 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       );
 
   Widget todayPage() {
-    if(!s.isDemo && s.goal!=null && !s.state.discovery.active && !busy && error==null && !s.state.needsClarification && s.currentMission==null) {
-      return ProjectView(store:s,onChat:()=>select(2),onRoadmap:()=>sendChat(message:'Предложи дорожную карту моего проекта. Это черновик для согласования.',operation:'chat'),onNewProject:newGoal);
+    if(!s.isDemo && s.goal!=null && !s.state.discovery.active && !busy && error==null && !s.state.needsClarification) {
+      return ProjectView(store:s,onChat:()=>select(2),onRoadmap:()=>sendChat(message:'Предложи дорожную карту моего проекта. Это черновик для согласования.',operation:'chat'),onNewProject:newGoal,onAction:()=>sendChat(message:'Подготовь одно следующее реальное действие по моему проекту. Если не хватает существенного контекста, уточни его.',operation:'mission'),onMission:()=>setState((){tab=0;scene='mission';}));
     }
     final m = s.currentMission;
     if (!s.isDemo && (busy || error != null || s.state.needsClarification)) return easyQuestionPage();
@@ -587,7 +584,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
   }
 
   Widget pathPage() {
-    if (!s.isDemo && s.goal != null) return ProjectView(store:s, onChat:()=>select(2), onRoadmap:()=>sendChat(message:'Предложи дорожную карту моего проекта, учитывая принятые решения. Покажи её как черновик для согласования.',operation:'chat'),onNewProject:newGoal);
+    if (!s.isDemo && s.goal != null) return ProjectView(store:s, onChat:()=>select(2), onRoadmap:()=>sendChat(message:'Предложи дорожную карту моего проекта, учитывая принятые решения. Покажи её как черновик для согласования.',operation:'chat'),onNewProject:newGoal,onAction:()=>sendChat(message:'Подготовь одно следующее реальное действие по моему проекту. Если не хватает существенного контекста, уточни его.',operation:'mission'),onMission:()=>setState((){tab=0;scene='mission';}));
     return heroPathPage();
   }
 
@@ -2035,7 +2032,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
   @override
   Widget build(BuildContext context) {
     final message = widget.message;
-    final lengthy = false;
+    final lengthy = message.text.length > 100000;
     final text = lengthy && !expanded ? '${message.text.substring(0, 257)}…' : message.text;
     return Align(
       alignment: message.role == 'user' ? Alignment.centerRight : Alignment.centerLeft,

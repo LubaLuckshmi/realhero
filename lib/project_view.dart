@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'domain.dart';
 import 'project.dart';
 import 'store.dart';
 import 'widgets.dart';
@@ -32,7 +31,8 @@ class ProjectSourceCard extends StatelessWidget {
 class ProjectView extends StatelessWidget {
   final RealHeroStore store;
   final VoidCallback onChat,onRoadmap,onNewProject;
-  const ProjectView({super.key,required this.store,required this.onChat,required this.onRoadmap,required this.onNewProject});
+  final VoidCallback? onAction,onMission;
+  const ProjectView({super.key,required this.store,required this.onChat,required this.onRoadmap,required this.onNewProject,this.onAction,this.onMission});
   Future<void> edit(BuildContext context,{ProjectItem? item,ProjectStage? stage,String kind='note'}) async {
     var title=item?.title??stage?.title??'';
     var text=item?.text??stage?.detail??'';
@@ -62,6 +62,10 @@ class ProjectView extends StatelessWidget {
         ],icon:const Icon(Icons.folder_copy_outlined,color:teal))]),
       const SizedBox(height:18),Text(store.goal?.title??'',style:const TextStyle(fontSize:26,fontWeight:FontWeight.w700)),
       const SizedBox(height:14),ActionButton('Обсудить с Леей',onPressed:onChat,icon:Icons.chat_bubble_outline),
+      if(onAction!=null) TextButton(onPressed:onAction,child:const Text('Подготовить реальное действие')),
+      if(store.currentMission!=null && !store.currentMission!.isClosed && onMission!=null)
+        ExpansionTile(title:const Text('Ранее подготовленная миссия',style:TextStyle(color:muted,fontSize:13)),children:[
+          ListTile(title:Text(store.currentMission!.title),trailing:const Icon(Icons.chevron_right),onTap:onMission)]),
       if(p.summary.isNotEmpty)...[const SizedBox(height:16),GlassPanel(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('Замысел · черновик Леи',style:TextStyle(color:muted,fontSize:12)),const SizedBox(height:6),SelectableText(p.summary)]))],
       const SizedBox(height:24),Row(children:[const Expanded(child:Text('Дорожная карта',style:TextStyle(fontSize:20,fontWeight:FontWeight.bold))),
         IconButton(tooltip:'Добавить этап',onPressed:()async{

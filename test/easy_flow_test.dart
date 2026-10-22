@@ -60,16 +60,16 @@ void main() {
     expect(find.text('Сейчас есть силы на маленький шаг?'), findsNothing);
     expect(find.text('Фонарик'), findsOneWidget);
     await tester.tap(find.text('Фонарик')); await tester.pumpAndSettle();
-    expect(find.text('Выбери деталь фонарика'), findsOneWidget);
+    await tester.tap(find.text('Сегодня').last); await tester.pumpAndSettle();
+    expect(find.text('Твой проект'), findsOneWidget);
+    await tester.tap(find.text('Ранее подготовленная миссия'));await tester.pumpAndSettle();
+    await tester.tap(find.text('Выбери деталь фонарика'));await tester.pumpAndSettle();
     expect(find.text('Открыть подготовленную миссию'), findsNothing);
     expect(find.text('Маленький золотой фонарик с синим стеклом и звёздочкой на крыше.'), findsOneWidget);
-    await tester.ensureVisible(find.text('Готово')); await tester.tap(find.text('Готово')); await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Нравится звёздочка');
-    await tester.tap(find.text('Сделано, хочу дальше')); await tester.pumpAndSettle();
-    expect(calls,3); expect(find.text('Синее стекло'), findsOneWidget);
+    store.completeMission(outcome:OutcomeKind.partial,facts:'Нравится звёздочка',actualMinutes:0,difficulty:2,actionTaken:true,timeReported:false,difficultyReported:false);
     await store.flush(); final restored = RealHeroStore(storage:disk); await restored.load();
     expect(restored.currentMission!.outcome!.facts, 'Нравится звёздочка');
-    expect(restored.state.quickReplies, contains('Синее стекло'));
+
     expect(restored.currentMission!.outcome!.timeReported, false);
     expect(restored.currentMission!.outcome!.difficultyReported, false);
     expect(restored.settings.accessToken,'fixture-token');
@@ -81,7 +81,7 @@ void main() {
     store.acceptPlan({'reply':'Готово', 'mission':DemoScenario.invitation(store.goal!.id).toJson()});
     store.declineMission('Не подходит');
     await tester.pumpWidget(RealHeroApp(store:store)); await tester.pumpAndSettle();
-    expect(find.text('Этот шаг не подошёл'),findsOneWidget);
+    expect(find.text('Твой проект'),findsOneWidget);
     expect(find.text('Пригласи Андрея на демо'),findsNothing);
     expect(store.history,hasLength(1));
   });

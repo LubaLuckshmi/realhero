@@ -167,13 +167,9 @@ void main() {
     });
     await tester.pumpAndSettle();
     await screenshot(tester, 'personal_today_900');
-    expect(find.text('5 минут'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('today-preparation')));
-    await tester.pumpAndSettle();
-    expect(find.text('Подготовленный материал'), findsOneWidget);
-    tester.state<NavigatorState>(find.byType(Navigator).last).pop();
-    await tester.pumpAndSettle();
-    await tapText(tester, 'Посмотреть подготовку');
+    await tapText(tester, 'Ранее подготовленная миссия');
+    await tapText(tester, 'Минимальная практика внимательности');
+    expect(find.text('Минимальная практика внимательности · 5 минут'), findsNothing);
     await screenshot(tester, 'personal_mission_900');
     await tapText(tester, 'Перейти к действию');
     await screenshot(tester, 'personal_process_900');
@@ -181,7 +177,7 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     await tapText(tester, 'Путь');
-    expect(find.text('Найти своё направление'), findsOneWidget);
+    expect(find.text('Твой проект'), findsOneWidget);
     await screenshot(tester, 'personal_path_900');
     await store.flush();
     final reopened = RealHeroStore(storage: disk);
@@ -632,3 +628,4 @@ void main() {
     );
   }
 }
+

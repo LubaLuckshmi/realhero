@@ -13,7 +13,7 @@ String safeProjectUrl(String value) {
   final u = Uri.tryParse(value);
   if (u == null || u.scheme != 'https' || u.userInfo.isNotEmpty || !u.host.contains('.') ||
       u.host == 'localhost' || u.host.endsWith('.local') || u.host.contains(':') ||
-      (u.hasPort && u.port != 443) || RegExp(r'^(127|10|0|169\.254|192\.168|172\.(1[6-9]|2\d|3[01]))\.').hasMatch(u.host)) return '';
+      (u.hasPort && u.port != 443) || RegExp(r'^(127|10|0|169\.254|192\.168|172\.(1[6-9]|2\d|3[01]))\.').hasMatch(u.host)) { return ''; }
   return u.toString();
 }
 class ProjectStage {
