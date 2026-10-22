@@ -11,7 +11,6 @@ import 'discovery_view.dart';
 import 'process_view.dart';
 import 'backup.dart';
 import 'presentation_views.dart';
-import 'project.dart';
 import 'project_view.dart';
 
 Future<void> main() async {
