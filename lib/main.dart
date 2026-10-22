@@ -83,6 +83,9 @@ class HeroShell extends StatefulWidget {
 }
 
 class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
+  String? lastChatRequest;
+  String lastChatOperation='chat';
+  bool lastChatSearch=false;
   RealHeroStore get s => widget.store;
   LeiaClient get leia => widget.leiaClient ?? LeiaClient();
   int tab = 0;
@@ -1065,6 +1068,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                           error!,
                           style: const TextStyle(color: Color(0xFFFFBD9A)),
                         ),
+                        if(lastChatRequest!=null) TextButton(onPressed:()=>sendChat(message:lastChatRequest,operation:lastChatOperation,search:lastChatSearch,retry:true),child:const Text('Повторить')),
                         TextButton(
                           onPressed: settings,
                           child: const Text('Проверить подключение'),
@@ -1138,7 +1142,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
   );
   }
 
-  Future<void> sendChat({String? message, String? displayMessage, String operation = 'chat', bool search = false}) async {
+  Future<void> sendChat({String? message, String? displayMessage, String operation = 'chat', bool search = false, bool retry = false}) async {
     final text = (message ?? chatInput.text).trim();
     if (text.isEmpty || busy) return;
     if (s.isDemo) {
@@ -1151,7 +1155,8 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       return;
     }
     if (s.goal == null) s.setGoal(text);
-    s.appendChat('user', displayMessage ?? text);
+    if(!retry) s.appendChat('user', displayMessage ?? text);
+    lastChatRequest=text;lastChatOperation=operation;lastChatSearch=search;
     chatInput.clear();
     setState(() {
       busy = true;
@@ -2044,8 +2049,8 @@ class _ChatBubbleState extends State<_ChatBubble> {
           SelectableText(text),
           for(final source in message.sources) ProjectSourceCard(source:source,saved:widget.store?.sourceSaved(source)??false,onSave:()=>widget.store?.saveProjectSource(source)),
           if(widget.store!=null && message.role=='assistant' && message.sources.isEmpty) TextButton.icon(
-            onPressed:()=>widget.store!.addProjectItem('Из разговора с Леей',message.text,kind:'draft'),
-            icon:const Icon(Icons.bookmark_add_outlined,size:16),label:const Text('Сохранить в проект')),
+            onPressed:widget.store!.project.items.any((x)=>x.text==message.text)?null:()=>widget.store!.addProjectItem('Из разговора с Леей',message.text,kind:'draft'),
+            icon:const Icon(Icons.bookmark_add_outlined,size:16),label:Text(widget.store!.project.items.any((x)=>x.text==message.text)?'Сохранено в проект':'Сохранить в проект')),
           if (lengthy) TextButton(onPressed: () => setState(() => expanded = !expanded),
             child: Text(expanded ? 'Свернуть' : 'Читать дальше')),
         ]),

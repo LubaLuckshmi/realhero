@@ -94,6 +94,21 @@ Future<void> screenshot(WidgetTester tester, String name) async {
 }
 
 void main() {
+  testWidgets('project workspace shows proposal, decisions and saved references on tablet', (tester) async {
+    final store = await pumpApp(tester, size: const Size(900, 1200));
+    store.setGoal('Коллекция по петербургскому «Щелкунчику»');
+    store.acceptPlan({'reply':'Можно собрать замысел из сохранённых примеров.', 'workspace':{
+      'summary':'Идея коллекции ёлочных игрушек по балету. Способ изготовления ещё не выбран.',
+      'roadmap':[{'title':'Выбрать образы','detail':'Сравнить костюмы и сцены.'},{'title':'Согласовать эскиз','detail':'Определить состав коллекции.'},{'title':'Подготовить первый образец','detail':'После выбора техники и исполнителя.'}],
+      'drafts':[]}});
+    store.addProjectItem('Что важно в коллекции','Хочу связать балет и атмосферу Петербурга.',kind:'decision');
+    await tester.pumpAndSettle();
+    await screenshot(tester,'project_workspace_900');
+    expect(find.text('Твой проект'),findsOneWidget);
+    expect(find.text('Принять карту'),findsOneWidget);
+    expect(store.profile.xp,0);
+  });
+
   setUpAll(() async {
     // Load Flutter's bundled native Android font instead of Ahem, so both CI
     // layout assertions and optional captures use the app's real text metrics.
@@ -169,7 +184,7 @@ void main() {
     await screenshot(tester, 'personal_today_900');
     await tapText(tester, 'Ранее подготовленная миссия');
     await tapText(tester, 'Минимальная практика внимательности');
-    expect(find.text('Минимальная практика внимательности · 5 минут'), findsNothing);
+    expect(find.text('Минимальная практика внимательности · 5 минут'), findsOneWidget);
     await screenshot(tester, 'personal_mission_900');
     await tapText(tester, 'Перейти к действию');
     await screenshot(tester, 'personal_process_900');

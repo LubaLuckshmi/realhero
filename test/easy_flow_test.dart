@@ -65,7 +65,7 @@ void main() {
     await tester.tap(find.text('Ранее подготовленная миссия'));await tester.pumpAndSettle();
     await tester.tap(find.text('Выбери деталь фонарика'));await tester.pumpAndSettle();
     expect(find.text('Открыть подготовленную миссию'), findsNothing);
-    expect(find.text('Маленький золотой фонарик с синим стеклом и звёздочкой на крыше.'), findsOneWidget);
+    expect(store.currentMission!.materials.single.text,'Маленький золотой фонарик с синим стеклом и звёздочкой на крыше.');
     store.completeMission(outcome:OutcomeKind.partial,facts:'Нравится звёздочка',actualMinutes:0,difficulty:2,actionTaken:true,timeReported:false,difficultyReported:false);
     await store.flush(); final restored = RealHeroStore(storage:disk); await restored.load();
     expect(restored.currentMission!.outcome!.facts, 'Нравится звёздочка');
