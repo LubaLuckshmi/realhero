@@ -35,7 +35,8 @@ void main() {
     final client = LeiaClient(transport: (uri, headers, body) async {
       calls++;
       final request = jsonDecode(body) as Map;
-      expect(request['context']['interaction']['format'], 'one_prepared_action');
+      expect(request['version'], 2);
+      expect(request['context']['interaction'], isNull);
       expect(request['context'].containsKey('settings'), false);
       if (calls == 1) {
         expect(request['message'], 'Пока ничего');
@@ -85,3 +86,4 @@ void main() {
     expect(store.history,hasLength(1));
   });
 }
+

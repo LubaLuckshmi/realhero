@@ -252,7 +252,7 @@ test('rate limit and request validation run before provider dispatch', async (t)
 
 test('body limits, content type and malformed JSON have useful errors', async (t) => {
   const app = await withServer(t, { budgetUsd: 0 });
-  const oversized = await app.post(request({ message: 'x'.repeat(70_000) }));
+  const oversized = await app.post(request({ message: 'x'.repeat(140_000) }));
   assert.equal(oversized.status, 413);
   const wrongType = await app.post(request(), { 'content-type': 'text/plain' });
   assert.equal(wrongType.status, 415);
@@ -294,4 +294,92 @@ test('configuration defaults to disabled budget and rejects weak token/unknown c
   assert.throws(() => configFromEnv({ REALHERO_ACCESS_TOKEN: token, REALHERO_MODEL: 'unpriced-model' }), /MODEL/);
   assert.throws(() => configFromEnv({ REALHERO_ACCESS_TOKEN: token, REALHERO_TEST_BUDGET_USD: 'unbounded' }), /BUDGET/);
   assert.ok(conservativeCost({ message: 'Привет' }, 'gpt-4.1-mini', 2800) > 0);
+});
+
+test('unclear collection stays a question; prior AI craft instructions are not user evidence', async (t) => {
+  const data = answer();
+  Object.assign(data, { mission: null, goal: null, contextUpdates: [], assumptions: [],
+    needsClarification: true, quickReplies: ['Своими руками', 'С мастерами', 'Пока не знаю'],
+    understanding: 'Есть идея коллекции; способ создания пока не выбран.',
+    reply: 'Хочешь делать игрушки своими руками или придумать коллекцию для изготовления с мастерами?',
+    nextDirection: 'Уточнить способ создания.' });
+  let sent;
+  const app = await withServer(t, {}, mockProvider(data, (_, options) => { sent = JSON.parse(options.body); }));
+  const body = request({message: 'Хочу создать коллекцию ёлочных игрушек', context: {
+    chat: [{role: 'assistant', text: 'Возьми вату и клей, сделай шарик.'}],
+    interaction: {guidance: 'Когда выбор сделан, подготовь одно действие до пяти минут.'},
+    missions: [{title: 'Сделай шарик', materials: [{text: 'Возьми вату и клей'}]}]
+  }});
+  const response = await app.post(body);
+  assert.equal(response.status, 200);
+  const actual = await response.json();
+  assert.equal(actual.mission, null);
+  assert.equal(actual.needsClarification, true);
+  assert.deepEqual(actual.quickReplies, data.quickReplies);
+  assert.deepEqual(JSON.parse(sent.input[0].content).trustedSources, [body.message]);
+  assert.match(sent.instructions, /ПРОВЕРКА ГОТОВНОСТИ ПЕРЕД МИССИЕЙ/);
+  assert.match(sent.instructions, /один ответ не разрешает автоматически/);
+});
+
+test('unknown answer can remain clarification without inventing a mission', async (t) => {
+  const data = answer();
+  Object.assign(data, {mission: null, goal: null, contextUpdates: [], assumptions: [],
+    needsClarification: true, reply: 'Что ближе: придумать внешний вид или попробовать изготовление?',
+    quickReplies: ['Придумать внешний вид', 'Попробовать изготовление', 'Ни один'], nextDirection: 'Выбрать направление'});
+  const app = await withServer(t, {}, mockProvider(data));
+  const response = await app.post(request({message: 'Пока не знаю', context: {
+    goal: {context: 'Хочу свою коллекцию ёлочных игрушек'},
+    chat: [{role: 'user', text: 'Хочу свою коллекцию ёлочных игрушек'}]
+  }}));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).mission, null);
+});
+
+function projectAnswer() {
+  return {...answer(),mission:null,goal:null,contextUpdates:[],needsClarification:false,
+    reply:'Вот примеры для коллекции. Посмотри костюмы и оформление сцены.',
+    workspace:{summary:'',roadmap:[],drafts:[]}};
+}
+test('project search returns actual provider references and images, bounds tools and accounts fees',async(t)=>{
+  let payload;
+  const app=await withServer(t,{},async(_,options)=>{
+    payload=JSON.parse(options.body);
+    return {ok:true,status:200,json:async()=>({...provider(projectAnswer()),output:[
+      {type:'web_search_call',status:'completed',action:{sources:[{url:'https://theatre.example/production',title:'Постановка'}]},results:[
+        {type:'image_result',source_website_url:'https://theatre.example/gallery',thumbnail_url:'https://images.example/costume.jpg',caption:'Костюм Щелкунчика'},
+        {type:'image_result',source_website_url:'http://127.0.0.1/secret',image_url:'https://images.example/bad.jpg',caption:'Недоверенный'}]},
+      ...provider(projectAnswer()).output,
+    ]})};
+  });
+  const response=await app.post(request({version:2,operation:'chat',message:'Поищи примеры по Щелкунчику в Петербурге'}));
+  assert.equal(response.status,200);const data=await response.json();
+  assert.equal(data.mission,null);assert.equal(data.searchPerformed,true);
+  assert.equal(data.sources.length,2);assert.equal(data.sources[0].imageUrl,'https://images.example/costume.jpg');
+  assert.equal(payload.max_tool_calls,1);assert.equal(payload.tool_choice,'required');
+  assert.deepEqual(payload.tools[0].search_content_types,['image','text']);
+  assert.ok(app.budget.state.spentUsd>=0.05);assert.ok(app.budget.state.spentUsd<0.06);
+});
+test('ordinary project chat has no search fee, no mission, and roadmap is only a proposal',async(t)=>{
+  let payload;const data=projectAnswer();data.workspace.roadmap=[{id:'',title:'Собрать замысел',detail:'Выбрать тему'}];
+  const app=await withServer(t,{},mockProvider(data,(_,options)=>payload=JSON.parse(options.body)));
+  const response=await app.post(request({version:2,operation:'chat',message:'Предложи дорожную карту'}));
+  assert.equal(response.status,200);const actual=await response.json();
+  assert.equal(actual.mission,null);assert.deepEqual(actual.workspace.roadmap,data.workspace.roadmap);
+  assert.equal(payload.tools,undefined);assert.equal(actual.searchPerformed,false);assert.deepEqual(actual.sources,[]);
+});
+test('project chat rejects a fabricated mission instead of assigning it',async(t)=>{
+  const data=projectAnswer();data.mission=answer().mission;
+  const app=await withServer(t,{},mockProvider(data));
+  const response=await app.post(request({version:2,operation:'chat',message:'Расскажи о вариантах'}));
+  assert.equal(response.status,502);assert.equal((await response.json()).error.code,'invalid_ai_response');
+});
+test('requested search without actual sources is an explicit failure, not a pretend result',async(t)=>{
+  const app=await withServer(t,{},mockProvider(projectAnswer()));
+  const response=await app.post(request({version:2,operation:'chat',message:'Найди примеры'}));
+  assert.equal(response.status,502);assert.equal((await response.json()).error.code,'search_empty');
+});
+test('search ceiling reserves tool cost before dispatch and never resets existing cumulative spending',async(t)=>{
+  let calls=0; const app=await withServer(t,{budgetUsd:0.04},async()=>{calls++;throw Error('forbidden');});
+  const response=await app.post(request({version:2,operation:'chat',message:'Поищи примеры'}));
+  assert.equal(response.status,429);assert.equal(calls,0);assert.equal(app.budget.state.spentUsd,0);
 });

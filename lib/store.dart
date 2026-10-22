@@ -1,3 +1,4 @@
+import 'project.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -68,6 +69,37 @@ class RealHeroStore extends ChangeNotifier {
       .where((m) => m.goalId == goal?.id && m.outcome != null)
       .lastOrNull;
   OutcomeRecord? get lastOutcome => lastCompletedMission?.outcome;
+
+  ProjectWorkspace get project {
+    final id=goal?.id ?? '';
+    final existing=state.projects.where((p)=>p.goalId==id).firstOrNull;
+    if(existing!=null) return existing;
+    final p=ProjectWorkspace(goalId:id); state.projects.add(p); return p;
+  }
+  List<ChatMessage> get projectChat => state.chat.where((c)=>c.goalId==goal?.id || c.goalId.isEmpty).toList();
+  void saveProjectSource(ProjectSource source) {
+    if(source.url.isEmpty || project.items.any((x)=>x.source?.url==source.url && x.source?.imageUrl==source.imageUrl)) return;
+    project.items.add(ProjectItem(title:source.title,kind:'reference',source:source,userAuthored:false)); _changed();
+  }
+  bool sourceSaved(ProjectSource source)=>project.items.any((x)=>x.source?.url==source.url && x.source?.imageUrl==source.imageUrl);
+  void addProjectItem(String title,String text,{String kind='note'}) {project.items.add(ProjectItem(title:title,text:text,kind:kind)); _changed();}
+  void editProjectItem(ProjectItem item,String title,String text) {
+    final index=project.items.indexOf(item); if(index<0)return;
+    project.items[index]=ProjectItem(id:item.id,title:title,text:text,kind:item.kind,source:item.source,userAuthored:true); _changed();
+  }
+  void removeProjectItem(ProjectItem item) {project.items.remove(item); _changed();}
+  void acceptRoadmap() { project.roadmap..clear()..addAll(project.proposedRoadmap.map((x)=>ProjectStage.fromJson(x.toJson()))); project.proposedRoadmap.clear(); _changed();}
+  void dismissRoadmap() {project.proposedRoadmap.clear();_changed();}
+  void toggleStage(ProjectStage stage) {stage.done=!stage.done;_changed();}
+  void editStage(ProjectStage stage,String title,String detail) {stage.title=title;stage.detail=detail;_changed();}
+  void addStage(String title,String detail) {project.roadmap.add(ProjectStage(title:title,detail:detail));_changed();}
+  void removeStage(ProjectStage stage) {project.roadmap.remove(stage);_changed();}
+  void switchProject(Goal next) {
+    final currentId=goal?.id ?? '';
+    for(var i=0;i<state.chat.length;i++) {final c=state.chat[i]; if(c.goalId.isEmpty) state.chat[i]=ChatMessage(role:c.role,text:c.text,goalId:currentId,createdAt:c.createdAt,sources:c.sources);}
+    state.goal=next; state.currentMissionId=state.missions.where((m)=>m.goalId==next.id && !m.isClosed).lastOrNull?.id;
+    state.discovery=DiscoveryState();state.needsClarification=false;state.quickReplies.clear();state.understanding='';state.assumptions.clear();_changed();
+  }
 
   Future<void> load() async {
     if (loaded) return;
@@ -225,7 +257,12 @@ class RealHeroStore extends ChangeNotifier {
     state.currentMissionId = null;
     state.understanding = '';
     state.assumptions.clear();
-    state.chat.clear();
+    // Associate legacy messages before opening a different project.
+    final previousGoal = state.goals.length > 1 ? state.goals[state.goals.length - 2].id : '';
+    for (var i=0;i<state.chat.length;i++) {
+      final c=state.chat[i];
+      if(c.goalId.isEmpty) state.chat[i]=ChatMessage(role:c.role,text:c.text,createdAt:c.createdAt,sources:c.sources,goalId:previousGoal);
+    }
     state.discovery = DiscoveryState();
     state.needsClarification = false;
     state.quickReplies.clear();
@@ -367,7 +404,7 @@ class RealHeroStore extends ChangeNotifier {
 
   void appendChat(String role, String text) {
     if (text.trim().isEmpty) return;
-    state.chat.add(ChatMessage(role: role, text: text.trim()));
+    state.chat.add(ChatMessage(role: role, text: text.trim(), goalId: goal?.id ?? ''));
     _changed();
   }
 
@@ -675,13 +712,25 @@ class RealHeroStore extends ChangeNotifier {
       }
       state.currentMissionId = proposed.id;
     }
+    final workspace = jsonObject(response['workspace']);
+    if (workspace.isNotEmpty && goal != null) {
+      final p=project;
+      final summary=jsonString(workspace['summary']);
+      if(summary.isNotEmpty) p.summary=summary;
+      final stages=jsonList(workspace['roadmap']).map(ProjectStage.fromJson).where((x)=>x.title.trim().isNotEmpty).toList();
+      if(stages.isNotEmpty) p.proposedRoadmap..clear()..addAll(stages);
+      for(final raw in jsonList(workspace['drafts'])) {
+        final draft=jsonObject(raw); final title=jsonString(draft['title']); final text=jsonString(draft['text']);
+        if(title.isNotEmpty && text.isNotEmpty && !p.items.any((x)=>x.title==title && x.text==text)) p.items.add(ProjectItem(title:title,text:text,kind:'draft',userAuthored:false));
+      }
+    }
     final reply = jsonString(response['reply']);
     state.needsClarification = response['needsClarification'] == true;
     state.quickReplies
       ..clear()
       ..addAll(jsonStrings(response['quickReplies']).where((text) => text.length <= 48).take(3));
     if (reply.isNotEmpty) {
-      state.chat.add(ChatMessage(role: 'assistant', text: reply));
+      state.chat.add(ChatMessage(role: 'assistant', text: reply, goalId: goal?.id ?? '', sources: jsonList(response['sources']).map(ProjectSource.fromJson).where((e)=>e.url.isNotEmpty).toList()));
     }
     if (response['understanding'] is String) {
       state.understanding = response['understanding'] as String;
@@ -713,3 +762,4 @@ class RealHeroStore extends ChangeNotifier {
     _changed();
   }
 }
+

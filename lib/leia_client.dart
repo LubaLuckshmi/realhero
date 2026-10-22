@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'domain.dart';
-import 'easy_flow.dart';
+
 
 class LeiaException implements Exception {
   final String message;
@@ -47,7 +47,8 @@ class LeiaClient {
   Future<Map<String, dynamic>> respond({
     required AppState state,
     required String message,
-    String operation = 'plan',
+    String operation = 'chat',
+    bool search = false,
   }) async {
     if (state.isDemo) {
       throw const LeiaException(
@@ -88,10 +89,18 @@ class LeiaClient {
       'authorization': 'Bearer ${state.settings.accessToken}',
     };
     final body = jsonEncode({
-      'version': 1,
+      'version': 2,
+      'search': search,
       'operation': operation,
       'message': message,
-      'context': {...state.toJson(includeSettings: false), 'interaction': easyInteraction},
+      'context': {
+        ...state.toJson(includeSettings: false),
+        'chat': state.chat.where((c)=>c.goalId.isEmpty || c.goalId==state.goal?.id).toList().reversed.take(40).toList().reversed.map((c)=>c.toJson()).toList(),
+        'missions': state.missions.where((m)=>m.goalId==state.goal?.id).toList().reversed.take(6).map((m)=>m.toJson()).toList(),
+        'goals': [if(state.goal!=null) state.goal!.toJson()],
+        'projects': state.projects.where((p)=>p.goalId==state.goal?.id).map((p)=>p.toJson()).toList(),
+        'contextUpdates': [],
+      },
     });
     try {
       final response =
@@ -224,6 +233,8 @@ class LeiaClient {
         retryable: true,
       );
     }
+    if(code == 'search_empty') return LeiaException('Поиск не вернул проверяемых примеров. Уточни запрос или повтори поиск.',code:code,retryable:true);
+    if(code == 'unsupported_version') return LeiaException('Сервер ещё не обновлён для рабочей области проекта. История сохранена.',code:code);
     if (code == 'api_key_missing' ||
         code == 'provider_not_configured' ||
         code == 'ai_not_configured') {
@@ -240,3 +251,4 @@ class LeiaClient {
     );
   }
 }
+

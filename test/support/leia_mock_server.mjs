@@ -55,6 +55,7 @@ const provider = async (url, options) => {
     } : null,
     contextUpdates: [],
   };
+  if(payload.text.format.schema.properties.workspace) answer.workspace={summary:'',roadmap:[],drafts:[]};
   return { ok: true, status: 200, json: async () => ({
     status: 'completed', usage: { input_tokens: 1200, output_tokens: 400 },
     output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(answer) }] }],
@@ -71,3 +72,4 @@ app.listen(0, '127.0.0.1', () => {
 const close = () => { app.closeAllConnections(); app.close(() => { budget.close(); process.exit(0); }); };
 process.on('SIGTERM', close);
 process.on('SIGINT', close);
+

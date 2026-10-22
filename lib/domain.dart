@@ -1,3 +1,4 @@
+import 'project.dart';
 import 'discovery.dart';
 
 /// RealHero's serialisable, device-local domain. The game layer and changes in
@@ -332,19 +333,25 @@ class Mission {
 class ChatMessage {
   final String role;
   final String text;
+  final String goalId;
+  final List<ProjectSource> sources;
   final DateTime createdAt;
-  ChatMessage({required this.role, required this.text, DateTime? createdAt})
-    : createdAt = createdAt ?? DateTime.now().toUtc();
+  ChatMessage({required this.role, required this.text, this.goalId = '', List<ProjectSource>? sources, DateTime? createdAt})
+    : sources = sources ?? [], createdAt = createdAt ?? DateTime.now().toUtc();
   factory ChatMessage.fromJson(dynamic value) {
     final j = jsonObject(value);
     return ChatMessage(
       role: jsonString(j['role'], 'user'),
+      goalId: jsonString(j['goalId']),
+      sources: jsonList(j['sources']).map(ProjectSource.fromJson).where((e)=>e.url.isNotEmpty).toList(),
       text: jsonString(j['text']),
       createdAt: jsonDate(j['createdAt']),
     );
   }
   Map<String, dynamic> toJson() => {
     'role': role,
+    'goalId': goalId,
+    'sources': sources.map((e)=>e.toJson()).toList(),
     'text': text,
     'createdAt': createdAt.toIso8601String(),
   };
@@ -434,6 +441,7 @@ class AppState {
   final List<Mission> missions;
   String? currentMissionId;
   final List<ChatMessage> chat;
+  final List<ProjectWorkspace> projects;
   HeroProfile profile;
   final List<RealChange> realChanges;
   ServerSettings settings;
@@ -450,6 +458,7 @@ class AppState {
     List<Mission>? missions,
     this.currentMissionId,
     List<ChatMessage>? chat,
+    List<ProjectWorkspace>? projects,
     HeroProfile? profile,
     List<RealChange>? realChanges,
     ServerSettings? settings,
@@ -463,6 +472,7 @@ class AppState {
   }) : goals = goals ?? [],
        missions = missions ?? [],
        chat = chat ?? [],
+       projects = projects ?? [],
        profile = profile ?? HeroProfile(),
        realChanges = realChanges ?? [],
        settings = settings ?? ServerSettings(),
@@ -487,6 +497,7 @@ class AppState {
           ? j['currentMissionId']
           : null,
       chat: jsonList(j['chat']).map(ChatMessage.fromJson).toList(),
+      projects: jsonList(j['projects']).map(ProjectWorkspace.fromJson).toList(),
       profile: HeroProfile.fromJson(j['profile']),
       realChanges: jsonList(j['realChanges']).map(RealChange.fromJson).toList(),
       settings: ServerSettings.fromJson(j['settings']),
@@ -506,6 +517,7 @@ class AppState {
     'missions': missions.map((e) => e.toJson()).toList(),
     'currentMissionId': currentMissionId,
     'chat': chat.map((e) => e.toJson()).toList(),
+    'projects': projects.map((e) => e.toJson()).toList(),
     'profile': profile.toJson(),
     'realChanges': realChanges.map((e) => e.toJson()).toList(),
     if (includeSettings) 'settings': settings.toJson(),
@@ -727,3 +739,4 @@ class DemoScenario {
         'Два встроенных демонстрационных экрана RealHero: «Сегодня» с подготовленной миссией и «Твой путь» с развитием героя. Это доступный внутри приложения пример для демосценария; он не выдаётся за внешний проект пользователя.',
   );
 }
+

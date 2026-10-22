@@ -11,6 +11,8 @@ import 'discovery_view.dart';
 import 'process_view.dart';
 import 'backup.dart';
 import 'presentation_views.dart';
+import 'project.dart';
+import 'project_view.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -158,6 +160,10 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
               ),
               gap(),
               SelectableText(text),
+          for(final source in message.sources) ProjectSourceCard(source:source,saved:widget.store?.sourceSaved(source)??false,onSave:()=>widget.store?.saveProjectSource(source)),
+          if(widget.store!=null && message.role=='assistant' && message.sources.isEmpty) TextButton.icon(
+            onPressed:()=>widget.store!.addProjectItem('Из разговора с Леей',message.text,kind:'draft'),
+            icon:const Icon(Icons.bookmark_add_outlined,size:16),label:const Text('Сохранить в проект')),
               gap(),
               ActionButton('Понятно', onPressed: () => Navigator.pop(ctx)),
             ],
@@ -349,6 +355,9 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
       );
 
   Widget todayPage() {
+    if(!s.isDemo && s.goal!=null && !s.state.discovery.active && !busy && error==null && !s.state.needsClarification && s.currentMission==null) {
+      return ProjectView(store:s,onChat:()=>select(2),onRoadmap:()=>sendChat(message:'Предложи дорожную карту моего проекта. Это черновик для согласования.',operation:'chat'),onNewProject:newGoal);
+    }
     final m = s.currentMission;
     if (!s.isDemo && (busy || error != null || s.state.needsClarification)) return easyQuestionPage();
     if (!s.isDemo && m?.status == MissionStatus.declined) return declinedPage();
@@ -578,6 +587,11 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
   }
 
   Widget pathPage() {
+    if (!s.isDemo && s.goal != null) return ProjectView(store:s, onChat:()=>select(2), onRoadmap:()=>sendChat(message:'Предложи дорожную карту моего проекта, учитывая принятые решения. Покажи её как черновик для согласования.',operation:'chat'),onNewProject:newGoal);
+    return heroPathPage();
+  }
+
+  Widget heroPathPage() {
     final history = s.state.missions
         .where(
           (m) => m.goalId == s.goal?.id && m.status != MissionStatus.declined,
@@ -969,6 +983,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
         select(0);
       });
     }
+    final conversation=s.projectChat;
     return Padding(
     padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
     child: Column(
@@ -1027,14 +1042,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                     ],
                   ),
                 ),
-              if (s.state.chat.length > 4)
-                ExpansionTile(
-                  key: const ValueKey('earlier-chat'),
-                  title: const Text('Раньше в разговоре', style: TextStyle(fontSize: 13, color: muted)),
-                  children: [for (final c in s.state.chat.take(s.state.chat.length - 4)) _ChatBubble(key: ValueKey(c), message: c)],
-                ),
-              for (final c in s.state.chat.skip(s.state.chat.length > 4 ? s.state.chat.length - 4 : 0))
-                _ChatBubble(key: ValueKey(c), message: c),
+              for (final c in conversation) _ChatBubble(key:ValueKey(c),message:c,store:s),
               if (busy)
                 const Padding(
                   padding: EdgeInsets.all(18),
@@ -1046,7 +1054,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       SizedBox(width: 12),
-                      Expanded(child: Text('Лея готовит следующий ход…')),
+                      Expanded(child: Text('Лея готовит ответ…')),
                     ],
                   ),
                 ),
@@ -1069,7 +1077,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
-              if (s.currentMission != null && !s.isDemo)
+              if (s.currentMission != null && !s.isDemo && !s.currentMission!.isClosed)
                 Padding(
                   padding: const EdgeInsets.only(top: 14),
                   child: ActionButton(
@@ -1097,10 +1105,12 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                   unawaited(sendChat(message: reply));
                 }
               }),
-            ActionChip(label: const Text('Можно без переписки'), onPressed: () => s.startDiscovery(keepGoal: true)),
+
           ])),
         ],
-        gap(12),
+        gap(6),
+        Align(alignment:Alignment.centerLeft,child:TextButton.icon(
+          onPressed:busy?null:()=>sendChat(search:true),icon:const Icon(Icons.travel_explore,size:18),label:const Text('Найти в интернете'))),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -1112,7 +1122,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
                 enabled: !busy,
                 textInputAction: TextInputAction.newline,
                 decoration: const InputDecoration(
-                  hintText: 'Расскажи, что важно…',
+                  hintText: 'Напиши Лее по проекту…',
                 ),
               ),
             ),
@@ -1132,16 +1142,9 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
   );
   }
 
-  Future<void> sendChat({String? message, String? displayMessage, String operation = 'mission'}) async {
+  Future<void> sendChat({String? message, String? displayMessage, String operation = 'chat', bool search = false}) async {
     final text = (message ?? chatInput.text).trim();
     if (text.isEmpty || busy) return;
-    if (!s.isDemo && (s.currentMission == null || s.currentMission!.isClosed) &&
-        !s.state.needsClarification && RegExp(r'^(?:я\s+)?(?:пока\s+)?не\s+знаю(?:[\s,.!…].*)?$', caseSensitive: false).hasMatch(text)) {
-      s.appendChat('user', text);
-      chatInput.clear();
-      s.startDiscovery(keepGoal: true);
-      return;
-    }
     if (s.isDemo) {
       s.appendChat('user', text);
       s.appendChat(
@@ -1157,20 +1160,20 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
     setState(() {
       busy = true;
       error = null;
-      tab = 0;
-      scene = 'today';
+      tab = 2;
     });
     try {
       final response = await leia.respond(
         state: s.state,
         message: text,
         operation: operation,
+        search: search,
       );
       s.acceptPlan(response);
       await s.flush();
       if (mounted) {
         setState(() => busy = false);
-        setState(() { tab = 0; scene = 'today'; });
+        setState(() { tab = operation=='chat' ? 2 : 0; scene = 'today'; });
       }
     } catch (e) {
       if (mounted) {
@@ -1829,7 +1832,7 @@ class _HeroShellState extends State<HeroShell> with WidgetsBindingObserver {
     final text = s.state.discovery.goalText.trim();
     if (text.isEmpty) return;
     s.setGoal(text);
-    unawaited(sendChat(message: '$text\n\nПомоги начать с одного лёгкого действия. Если для этого нужно выбрать направление, предложи два конкретных варианта и «Пока ничего».', displayMessage: text, operation: 'onboard'));
+    unawaited(sendChat(message:text,operation:'chat'));
   }
 
   void prepareDiscovery() {
@@ -2021,7 +2024,8 @@ class DemoPrototype extends StatelessWidget {
 
 class _ChatBubble extends StatefulWidget {
   final ChatMessage message;
-  const _ChatBubble({super.key, required this.message});
+  final RealHeroStore? store;
+  const _ChatBubble({super.key, required this.message,this.store});
   @override
   State<_ChatBubble> createState() => _ChatBubbleState();
 }
@@ -2031,7 +2035,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
   @override
   Widget build(BuildContext context) {
     final message = widget.message;
-    final lengthy = message.role != 'user' && message.text.length > 260;
+    final lengthy = false;
     final text = lengthy && !expanded ? '${message.text.substring(0, 257)}…' : message.text;
     return Align(
       alignment: message.role == 'user' ? Alignment.centerRight : Alignment.centerLeft,
@@ -2042,6 +2046,10 @@ class _ChatBubbleState extends State<_ChatBubble> {
           borderRadius: BorderRadius.circular(18)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           SelectableText(text),
+          for(final source in message.sources) ProjectSourceCard(source:source,saved:widget.store?.sourceSaved(source)??false,onSave:()=>widget.store?.saveProjectSource(source)),
+          if(widget.store!=null && message.role=='assistant' && message.sources.isEmpty) TextButton.icon(
+            onPressed:()=>widget.store!.addProjectItem('Из разговора с Леей',message.text,kind:'draft'),
+            icon:const Icon(Icons.bookmark_add_outlined,size:16),label:const Text('Сохранить в проект')),
           if (lengthy) TextButton(onPressed: () => setState(() => expanded = !expanded),
             child: Text(expanded ? 'Свернуть' : 'Читать дальше')),
         ]),
@@ -2049,3 +2057,4 @@ class _ChatBubbleState extends State<_ChatBubble> {
     );
   }
 }
+

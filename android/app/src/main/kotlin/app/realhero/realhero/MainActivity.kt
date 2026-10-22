@@ -49,6 +49,21 @@ class MainActivity : FlutterActivity() {
                     }
                     return@setMethodCallHandler
                 }
+                if (call.method == "openUrl") {
+                    val url = call.argument<String>("url") ?: ""
+                    val uri = android.net.Uri.parse(url)
+                    if (uri.scheme != "https" || uri.host.isNullOrBlank() || uri.userInfo != null) {
+                        result.error("INVALID_URL", "Некорректная ссылка", null)
+                        return@setMethodCallHandler
+                    }
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, uri))
+                        result.success(null)
+                    } catch (_: ActivityNotFoundException) {
+                        result.error("NO_BROWSER", "Нет браузера для открытия ссылки", null)
+                    }
+                    return@setMethodCallHandler
+                }
                 if (call.method != "shareText") {
                     result.notImplemented()
                     return@setMethodCallHandler
@@ -135,3 +150,4 @@ class MainActivity : FlutterActivity() {
         return JSONObject().put("format", "realhero.backup").put("version", 1).put("preferences", preferences).toString()
     }
 }
+

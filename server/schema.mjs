@@ -62,3 +62,17 @@ export function conforms(value, schema) {
   }
   return false;
 }
+
+
+export function projectSchema(operation) {
+  return object({
+    ...LEIA_SCHEMA.properties,
+    reply: {type: 'string', maxLength: 3200},
+    mission: operation === 'chat' ? {type: 'null'} : LEIA_SCHEMA.properties.mission,
+    workspace: object({
+      summary: {type: 'string', maxLength: 1200},
+      roadmap: {type: 'array', maxItems: 8, items: object({id: string, title: {type:'string',maxLength:120}, detail: {type:'string',maxLength:800}})},
+      drafts: {type:'array',maxItems:5,items:object({title:{type:'string',maxLength:160},text:string})},
+    }),
+  });
+}

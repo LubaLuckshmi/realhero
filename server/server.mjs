@@ -5,7 +5,7 @@ import { BudgetLedger, MODEL_RATES } from './budget.mjs';
 import { createGateway } from './gateway.mjs';
 import { PublicError, publicError } from './errors.mjs';
 
-const MAX_BODY_BYTES = 65_536;
+const MAX_BODY_BYTES = 130_000;
 
 export function configFromEnv(env = process.env) {
   const number = (key, fallback, min, max) => {
@@ -122,3 +122,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error(error.message); process.exit(1);
   }
 }
+
