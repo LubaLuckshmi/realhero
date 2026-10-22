@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { LEIA_SCHEMA, conforms, projectSchema } from './schema.mjs';
 import { LEIA_INSTRUCTIONS, modelContext, trustedSources } from './prompt.mjs';
 import { PROJECT_INSTRUCTIONS, wantsSearch, referencesFrom } from './project.mjs';
+import { enrichImages, applyVisualStatus } from './images.mjs';
 import { PublicError } from './errors.mjs';
 import { conservativeCost, usageCost } from './budget.mjs';
 
@@ -53,7 +54,7 @@ export function validateGrounding(data, body) {
   }
 }
 
-export function createGateway({ config, ledger, fetchImpl = fetch, clock = () => new Date() }) {
+export function createGateway({ config, ledger, fetchImpl = fetch, imageReader, clock = () => new Date() }) {
   return async (body) => {
     validateRequest(body);
     if (!(config.budgetUsd > 0)) {
@@ -127,6 +128,11 @@ export function createGateway({ config, ledger, fetchImpl = fetch, clock = () =>
       if (search && (!data.searchPerformed || !data.sources.length)) {
         throw new PublicError(502, 'search_empty', 'Поиск не вернул проверяемых примеров. Уточни запрос и повтори; описание темы не подставлялось вместо поиска.');
       }
+    }
+    if (search && body.version === 2) {
+      const visual = /(?:визуал|картин|изображ|фото|референс|костюм|пример|подборк)/iu.test(body.message);
+      if (visual) data.sources = await enrichImages(data.sources, {read:imageReader});
+      applyVisualStatus(data, visual);
     }
     if (data.goal) {
       const previousId = body.context?.goal?.id;

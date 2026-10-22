@@ -62,8 +62,8 @@ async function readJson(req) {
   catch { throw new PublicError(400, 'invalid_json', 'Не удалось прочитать сообщение.'); }
 }
 
-export function createApp({ config, ledger, fetchImpl = fetch, clock = () => new Date() }) {
-  const gateway = createGateway({ config, ledger, fetchImpl, clock });
+export function createApp({ config, ledger, fetchImpl = fetch, imageReader, clock = () => new Date() }) {
+  const gateway = createGateway({ config, ledger, fetchImpl, imageReader, clock });
   const rateWindows = new Map();
   let inFlight = 0;
   const server = createServer(async (req, res) => {

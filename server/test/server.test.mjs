@@ -52,10 +52,10 @@ const mockProvider = (data, observer = () => {}) => async (url, options) => {
 };
 const ledger = (ceilingUsd = 2) => new BudgetLedger({ path: null, ceilingUsd });
 
-async function withServer(t, overrides = {}, fetchImpl = mockProvider(answer())) {
+async function withServer(t, overrides = {}, fetchImpl = mockProvider(answer()), imageReader = async () => {throw Error('No image fixture');}) {
   const appConfig = config(overrides);
   const budget = ledger(appConfig.budgetUsd);
-  const server = createApp({ config: appConfig, ledger: budget, fetchImpl });
+  const server = createApp({ config: appConfig, ledger: budget, fetchImpl, imageReader });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => { server.closeAllConnections(); server.close(resolve); budget.close(); }));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -350,7 +350,7 @@ test('project search returns actual provider references and images, bounds tools
         {type:'image_result',source_website_url:'http://127.0.0.1/secret',image_url:'https://images.example/bad.jpg',caption:'Недоверенный'}]},
       ...provider(projectAnswer()).output,
     ]})};
-  });
+  }, async url => ({url,type:'image/jpeg',body:Buffer.concat([Buffer.from([255,216,255]),Buffer.alloc(1100)])}));
   const response=await app.post(request({version:2,operation:'chat',message:'Поищи примеры по Щелкунчику в Петербурге'}));
   assert.equal(response.status,200);const data=await response.json();
   assert.equal(data.mission,null);assert.equal(data.searchPerformed,true);
@@ -382,4 +382,23 @@ test('search ceiling reserves tool cost before dispatch and never resets existin
   let calls=0; const app=await withServer(t,{budgetUsd:0.04},async()=>{calls++;throw Error('forbidden');});
   const response=await app.post(request({version:2,operation:'chat',message:'Поищи примеры'}));
   assert.equal(response.status,429);assert.equal(calls,0);assert.equal(app.budget.state.spentUsd,0);
+});
+test('text-only provider result is enriched in the real HTTP gateway; user query is unchanged and model called once',async(t)=>{
+  let paidCalls=0;
+  const text='Поищи примеры костюмов Щелкунчика в Питере для моей коллекции';
+  const app=await withServer(t,{},async(_,options)=>{
+    paidCalls++;
+    assert.equal(JSON.parse(JSON.parse(options.body).input[0].content).message,text);
+    return {ok:true,json:async()=>provider(projectAnswer(),{output:[
+      {type:'web_search_call',status:'completed',action:{sources:[1,2,3].map(n=>({url:`https://theatre.example/${n}`,title:`Постановка ${n}`}))}},
+      ...provider(projectAnswer()).output]})};
+  },async url => url.endsWith('.jpg') ? {url,type:'image/jpeg',body:Buffer.concat([Buffer.from([255,216,255]),Buffer.alloc(1200)])}
+    : {url,type:'text/html',body:Buffer.from(`<meta property="og:image" content="${url}.jpg">`)});
+  const response=await app.post(request({version:2,operation:'chat',message:text}));
+  assert.equal(response.status,200);
+  const data=await response.json();
+  assert.equal(paidCalls,1);assert.equal(data.sources.filter(s=>s.imageUrl).length,3);
+  assert.equal(data.visualStatus,'available');assert.equal(data.mission,null);
+  assert.match(data.reply,/Вот примеры для коллекции/);
+  assert.ok(app.budget.state.spentUsd<0.06);
 });
