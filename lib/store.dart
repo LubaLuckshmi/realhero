@@ -739,7 +739,7 @@ class RealHeroStore extends ChangeNotifier {
       ..clear()
       ..addAll(jsonStrings(response['assumptions']));
     state.contextUpdates.addAll(
-      jsonList(response['contextUpdates']).map(jsonObject),
+      jsonList(response['contextUpdates']).map((v)=>{...jsonObject(v),'goalId':goal?.id??''}),
     );
     final reflection = jsonObject(response['reflection']);
     if (reflection.isNotEmpty) {

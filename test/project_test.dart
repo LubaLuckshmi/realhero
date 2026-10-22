@@ -38,9 +38,10 @@ void main(){
   final s=RealHeroStore(storage:ProjectDisk());await s.load();s.configureServer('https://realhero.example','fixture-token');
   s.setGoal('Первый проект');s.appendChat('user','Чужой контекст');s.addProjectItem('Секрет другого проекта','не пересылать');
   s.setGoal('Второй проект');s.appendChat('user','Найди примеры');
+  s.acceptPlan({'reply':'Учла','contextUpdates':[{'text':'Есть мастер','sourceQuote':'Помогает мастер'}]});
   final c=LeiaClient(transport:(uri,headers,body)async{
    final j=jsonDecode(body);expect(j['version'],2);expect(j['operation'],'chat');expect(j['search'],true);
-   expect(j['context']['settings'],isNull);expect(body.contains('Чужой контекст'),false);expect(body.contains('не пересылать'),false);
+   expect(j['context']['settings'],isNull);expect(j['context']['facts'][0]['sourceQuote'],'Помогает мастер');expect(body.contains('Чужой контекст'),false);expect(body.contains('не пересылать'),false);
    return const LeiaHttpResponse(200,'{"reply":"Ответ","mission":null}');
   });
   await c.respond(state:s.state,message:'Найди примеры',search:true);

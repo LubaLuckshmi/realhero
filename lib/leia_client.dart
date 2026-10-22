@@ -99,7 +99,8 @@ class LeiaClient {
         'missions': state.missions.where((m)=>m.goalId==state.goal?.id).toList().reversed.take(6).map((m)=>m.toJson()).toList(),
         'goals': [if(state.goal!=null) state.goal!.toJson()],
         'projects': state.projects.where((p)=>p.goalId==state.goal?.id).map((p)=>p.toJson()).toList(),
-        'contextUpdates': [],
+        'contextUpdates': state.contextUpdates.where((f)=>f['goalId']==state.goal?.id).toList(),
+        'facts': state.contextUpdates.where((f)=>f['goalId']==state.goal?.id).map((f)=>{'sourceQuote':f['sourceQuote']}).toList(),
       },
     });
     try {
